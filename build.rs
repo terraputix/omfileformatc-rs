@@ -32,6 +32,7 @@ fn main() {
         .clang_arg("--sysroot=/usr/aarch64-linux-gnu")
         .header(format!("{}/include/vp4.h", SUBMODULE))
         .header(format!("{}/include/fp.h", SUBMODULE))
+        .header(format!("{}/include/om_decoder.h", SUBMODULE))
         .generate()
         .expect("Unable to generate bindings");
 
