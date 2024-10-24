@@ -1,0 +1,4 @@
+[submodule "open-meteo"]
+	path = open-meteo
+	url = git@github.com:open-meteo/open-meteo.git
+	branch = testing_multi_dimensional_files

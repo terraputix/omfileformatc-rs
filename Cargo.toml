@@ -1,0 +1,25 @@
+[package]
+name = "omfileformatc-rs"
+version = "0.0.1"
+edition = "2021"
+
+build = "build.rs"
+
+categories = ["compression", "encoding"]
+description = "OmFileFormatC rust bindings"
+include = [
+    "open-meteo/Sources/OmFileFormatC/include/**/*.h",
+    "open-meteo/Sources/OmFileFormatC/src/**/*.c",
+    "Makefile",
+    "src/**/*",
+    "Cargo.toml",
+    "build.rs",
+    "README.md",
+]
+license = "GPL-2.0-or-later"
+
+[dependencies]
+libc = "0.2"
+
+[build-dependencies]
+bindgen = "0.69.4"
