@@ -23,13 +23,10 @@ fn main() {
     println!("cargo:rerun-if-changed=src/lib.rs");
 
     let bindings = bindgen::Builder::default()
-        // fix strange cross compilation error from bindgen
+        // If there are strange compilation errors from bindgen for cross compilation
+        // it might be due to the sysroot not being set correctly.
         // https://github.com/rust-lang/rust-bindgen/issues/1229
-        // for some reason setting sysroot to anything just works!?
-        // before that, I tried to set it conditionally based on target
-        // .clang_arg("--sysroot=/usr/aarch64-linux-gnu")
-        // .clang_arg("--sysroot=/usr/arm-linux-gnueabihf")
-        // .clang_arg("--sysroot=/usr/aarch64-linux-gnu")
+        // Now we are using cross-rs to compile within a docker container, so we don't need to set sysroot.
         .header(format!("{}/include/vp4.h", SUBMODULE))
         .header(format!("{}/include/fp.h", SUBMODULE))
         .header(format!("{}/include/om_decoder.h", SUBMODULE))
