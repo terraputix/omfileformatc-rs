@@ -1,11 +1,22 @@
 # Compiler
 ifeq ($(OS),Windows_NT)
-    CC = gcc
+    CC = clang
     CFLAGS = -Iinclude -Wall -Wextra -O2 -fstrict-aliasing -fPIC
 else
-    CC ?= gcc
+	CC ?= clang
     CFLAGS = -Iinclude -Wall -Wextra -O2 -fstrict-aliasing -fPIC
 endif
+
+# Append sysroot if defined (according to Cross.toml)
+ifdef SYSROOT
+    CFLAGS += --sysroot=$(SYSROOT)
+endif
+
+# # Append target if defined (according to Cross.toml)
+ifdef CLANG_TARGET
+	CFLAGS += -target $(CLANG_TARGET)
+endif
+
 
 # Directories
 INCDIR = include
@@ -25,14 +36,27 @@ SSE_FLAGS = -msse4.1
 AVX2_FLAGS = -mavx2
 
 # Determine architecture and set vectorization flags
-ARCH := $(shell uname -m)
+ARCH ?= $(shell uname -m)
+# Additional architecture detection and setting
+ifneq (,$(findstring aarch64,$(CC)))
+  ARCH = aarch64
+else ifneq (,$(findstring arm64,$(ARCH)))
+  ARCH = aarch64
+else ifneq (,$(findstring iPhone,$(ARCH)))
+  ARCH = aarch64
+  CFLAGS += -DHAVE_MALLOC_MALLOC
+else ifneq (,$(findstring powerpc64le,$(CC)))
+  ARCH = ppc64le
+endif
+
+
 ifeq ($(ARCH),x86_64)
 	CFLAGS += $(SSE_FLAGS)
 	ifeq ($(AVX2),1)
 		CFLAGS += $(AVX2_FLAGS)
 	endif
 else ifeq ($(ARCH),aarch64)
-	CFLAGS += -march=armv8-a
+  CFLAGS += -march=armv8-a
 endif
 
 # Rule to create the library
@@ -42,25 +66,6 @@ $(TARGET): $(OBJS)
 # Rule to compile source files into object files
 $(SRCDIR)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
-
-
-# Test program
-TEST_SRCS = tests.c
-TEST_OBJS = $(TEST_SRCS:.c=.o)
-TEST_TARGET = test_libic
-
-# Rule to create the test executable
-$(TEST_TARGET): $(TEST_OBJS) $(TARGET)
-	$(CC) $(CFLAGS) -L. -lic -lm -o $@ $^
-
-# Rule to compile test source files into object files
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# Run the test
-.PHONY: test
-test: $(TEST_TARGET)
-	./$(TEST_TARGET)
 
 # Clean rule
 .PHONY: clean

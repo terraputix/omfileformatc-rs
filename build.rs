@@ -21,12 +21,21 @@ where
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=src/lib.rs");
+    println!("cargo:rerun-if-changed=Makefile");
+
+    let target = env::var("TARGET").unwrap();
+    let sysroot = match target.as_str() {
+        "aarch64-unknown-linux-gnu" => "/usr/aarch64-linux-gnu",
+        "x86_64-unknown-linux-gnu" => "/usr/x86_64-linux-gnu",
+        _ => unimplemented!(),
+    };
+    println!("sysroot: {}", sysroot);
 
     let bindings = bindgen::Builder::default()
-        // If there are strange compilation errors from bindgen for cross compilation
-        // it might be due to the sysroot not being set correctly.
+        // fix strange cross compilation error from bindgen
         // https://github.com/rust-lang/rust-bindgen/issues/1229
-        // Now we are using cross-rs to compile within a docker container, so we don't need to set sysroot.
+        // for some reason setting sysroot to anything just works!?
+        .clang_arg(format!("--sysroot={}", sysroot))
         .header(format!("{}/include/vp4.h", SUBMODULE))
         .header(format!("{}/include/fp.h", SUBMODULE))
         .header(format!("{}/include/om_decoder.h", SUBMODULE))
@@ -55,9 +64,4 @@ fn main() {
 
     println!("cargo:rustc-link-search=native={}", out_path_str);
     println!("cargo:rustc-link-lib=static={}", LIB);
-
-    // Link against the MSVC runtime library on windows
-    if cfg!(target_env = "msvc") {
-        println!("cargo:rustc-link-lib=dylib=msvcrt");
-    }
 }

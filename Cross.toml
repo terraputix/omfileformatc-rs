@@ -1,5 +1,12 @@
 [target.aarch64-unknown-linux-gnu]
 image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:edge"
 pre-build = [
-    "cat /etc/os-release && apt-get update && apt-get install --assume-yes --no-install-recommends libclang-10-dev clang-10",
+    "cat /etc/os-release && apt-get update && apt-get install --assume-yes --no-install-recommends libclang-10-dev clang-10 && clang-10 --version",
+]
+[target.aarch64-unknown-linux-gnu.env]
+passthrough = [
+    "CC=clang-10",
+    "SYSROOT=/usr/aarch64-linux-gnu",
+    "CLANG_TARGET=aarch64-unknown-linux-gnu",
+    "ARCH=aarch64",
 ]
