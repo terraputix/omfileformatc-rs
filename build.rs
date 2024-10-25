@@ -29,6 +29,14 @@ fn main() {
         _ => None,
     };
     println!("sysroot: {:?}", sysroot);
+    if cfg!(all(
+        target_arch = "aarch64",
+        target_os = "windows",
+        target_env = "msvc"
+    )) {
+        println!("cargo::rustc-env=CLANG_TARGET=aarch64-pc-windows-msvc");
+        println!("cargo::rustc-env=ARCH=aarch64");
+    }
 
     let bindings = bindgen::Builder::default()
         // fix strange cross compilation error from bindgen
