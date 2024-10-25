@@ -3,7 +3,7 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process::Command;
 
-const SUBMODULE: &str = "open-meteo/Sources/OmFileFormatC/";
+const SUBMODULE: &str = "open-meteo/Sources/OmFileFormatC";
 const LIB: &str = "ic";
 
 fn run_command<I, S>(prog: &str, args: I)
