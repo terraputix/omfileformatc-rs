@@ -1,7 +1,7 @@
 # Compiler
 ifeq ($(OS),Windows_NT)
     CC = clang
-    CFLAGS = -Iinclude -Wall -O2 -Wimplicit-function-declaration
+    CFLAGS = -Iinclude -Wall -O2 -std=c89
 else
 	CC ?= clang
     CFLAGS = -Iinclude -Wall -O2 -fPIC
