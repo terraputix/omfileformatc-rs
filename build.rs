@@ -55,4 +55,9 @@ fn main() {
 
     println!("cargo:rustc-link-search=native={}", out_path_str);
     println!("cargo:rustc-link-lib=static={}", LIB);
+
+    // Link against the MSVC runtime library on windows
+    if cfg!(target_env = "msvc") {
+        println!("cargo:rustc-link-lib=dylib=msvcrt");
+    }
 }
