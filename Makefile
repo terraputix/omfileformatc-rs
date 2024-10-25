@@ -1,8 +1,11 @@
 # Compiler
-CC ?= gcc
-
-# Compiler flags
-CFLAGS = -Iinclude -Wall -Wextra -O2 -fstrict-aliasing -fPIC
+ifeq ($(OS),Windows_NT)
+    CC = gcc
+    CFLAGS = -Iinclude -Wall -Wextra -O2 -fstrict-aliasing -fPIC
+else
+    CC ?= gcc
+    CFLAGS = -Iinclude -Wall -Wextra -O2 -fstrict-aliasing -fPIC
+endif
 
 # Directories
 INCDIR = include
