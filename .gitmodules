@@ -1,4 +1,4 @@
 [submodule "open-meteo"]
 	path = open-meteo
-	url = https://github.com/open-meteo/open-meteo.git
-	branch = testing_multi_dimensional_files
+	url = https://github.com/terraputix/open-meteo.git
+	branch = windows-fixes
