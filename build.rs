@@ -21,9 +21,7 @@ where
         }
     }
 
-    let output = command
-        .output()
-        .expect("failed to start command; omfileformatc-rs currently only supports Unix");
+    let output = command.output().expect("failed to start command");
     assert!(output.status.success(), "{:?}", output);
 }
 
@@ -35,13 +33,13 @@ fn main() {
     let target = env::var("TARGET").unwrap();
     let (sysroot, env): (Option<&str>, Option<HashMap<&str, &str>>) = match target.as_str() {
         "aarch64-unknown-linux-gnu" => (Some("/usr/aarch64-linux-gnu"), None),
-        "aarch64-pc-windows-msvc" => (
-            None,
-            Some(HashMap::from([
-                ("CLANG_TARGET", "aarch64-pc-windows-msvc"),
-                ("ARCH", "aarch64"),
-            ])),
-        ),
+        // "aarch64-pc-windows-msvc" => (
+        //     None,
+        //     Some(HashMap::from([
+        //         ("CLANG_TARGET", "aarch64-pc-windows-msvc"),
+        //         ("ARCH", "aarch64"),
+        //     ])),
+        // ),
         _ => (None, None),
     };
 
