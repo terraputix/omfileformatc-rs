@@ -13,7 +13,17 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64
+            # ensurepip because of: https://github.com/PyO3/maturin-action/issues/249
+            # before-script: python3 -m ensurepip && cat /etc/os-release && yum install clang -y
+          - runner: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            # before-script: cat /etc/os-release && apt install clang -y
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,3 +32,13 @@ jobs:
         run: cargo build --verbose
       - name: Run tests
         run: cargo test --verbose
+
+    # runs-on: ubuntu-latest
+    # steps:
+    #   - uses: actions/checkout@v4
+    #     with:
+    #       submodules: true
+    #   - name: Build
+    #     run: cargo build --verbose
+    #   - name: Run tests
+    #     run: cargo test --verbose
