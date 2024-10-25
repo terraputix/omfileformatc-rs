@@ -26,10 +26,7 @@ fn main() {
     let target = env::var("TARGET").unwrap();
     let sysroot = match target.as_str() {
         "aarch64-unknown-linux-gnu" => Some("/usr/aarch64-linux-gnu"),
-        "x86_64-unknown-linux-gnu" => None,
-        "x86_64-apple-darwin" => None,
-        "aarch64-apple-darwin" => None,
-        _ => unimplemented!(),
+        _ => None,
     };
     println!("sysroot: {:?}", sysroot);
 
