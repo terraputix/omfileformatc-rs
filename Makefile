@@ -4,7 +4,11 @@ ifeq ($(OS),Windows_NT)
     CFLAGS = -Iinclude -Wall -Werror -O2 -fPIC
 else
 	CC ?= clang
-    CFLAGS = -Iinclude -Wall -O2 -fPIC -ferror-limit=0
+    CFLAGS = -Iinclude -Wall -O2 -fPIC
+endif
+
+ifeq ($(CC),clang)
+    CFLAGS += -ferror-limit=0
 endif
 
 # Append sysroot if defined (according to Cross.toml)
