@@ -29,7 +29,7 @@ fn main() {
         // before that, I tried to set it conditionally based on target
         // .clang_arg("--sysroot=/usr/aarch64-linux-gnu")
         // .clang_arg("--sysroot=/usr/arm-linux-gnueabihf")
-        .clang_arg("--sysroot=/usr/aarch64-linux-gnu")
+        // .clang_arg("--sysroot=/usr/aarch64-linux-gnu")
         .header(format!("{}/include/vp4.h", SUBMODULE))
         .header(format!("{}/include/fp.h", SUBMODULE))
         .header(format!("{}/include/om_decoder.h", SUBMODULE))
