@@ -1,10 +1,10 @@
 # Compiler
 ifeq ($(OS),Windows_NT)
     CC = clang
-    CFLAGS = -Iinclude -Wall -Wextra -O2 -fstrict-aliasing -fPIC
+    CFLAGS = -Iinclude -Wall -Werror -O2 -fPIC
 else
 	CC ?= clang
-    CFLAGS = -Iinclude -Wall -Wextra -O2 -fstrict-aliasing -fPIC
+    CFLAGS = -Iinclude -Wall -O2 -fPIC -ferror-limit=0
 endif
 
 # Append sysroot if defined (according to Cross.toml)
@@ -12,7 +12,7 @@ ifdef SYSROOT
     CFLAGS += --sysroot=$(SYSROOT)
 endif
 
-# # Append target if defined (according to Cross.toml)
+# Append target if defined (according to Cross.toml)
 ifdef CLANG_TARGET
 	CFLAGS += -target $(CLANG_TARGET)
 endif
