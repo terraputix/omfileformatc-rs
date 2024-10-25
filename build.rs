@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsStr;
 use std::path::PathBuf;
@@ -6,13 +7,21 @@ use std::process::Command;
 const SUBMODULE: &str = "open-meteo/Sources/OmFileFormatC";
 const LIB: &str = "ic";
 
-fn run_command<I, S>(prog: &str, args: I)
+fn run_command<I, S>(prog: &str, args: I, envs: Option<HashMap<&str, &str>>)
 where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
 {
-    let output = Command::new(prog)
-        .args(args)
+    let mut command = Command::new(prog);
+    command.args(args);
+
+    if let Some(env_vars) = envs {
+        for (key, value) in env_vars {
+            command.env(key, value);
+        }
+    }
+
+    let output = command
         .output()
         .expect("failed to start command; omfileformatc-rs currently only supports Unix");
     assert!(output.status.success(), "{:?}", output);
@@ -24,19 +33,23 @@ fn main() {
     println!("cargo:rerun-if-changed=Makefile");
 
     let target = env::var("TARGET").unwrap();
-    let sysroot = match target.as_str() {
-        "aarch64-unknown-linux-gnu" => Some("/usr/aarch64-linux-gnu"),
-        _ => None,
+    let (sysroot, env): (Option<&str>, Option<HashMap<&str, &str>>) = match target.as_str() {
+        "aarch64-unknown-linux-gnu" => (Some("/usr/aarch64-linux-gnu"), None),
+        "aarch64-pc-windows-msvc" => (
+            None,
+            Some(
+                [
+                    ("CLANG_TARGET", "aarch64-pc-windows-msvc"),
+                    ("ARCH", "aarch64"),
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+            ),
+        ),
+        _ => (None, None),
     };
     println!("sysroot: {:?}", sysroot);
-    if cfg!(all(
-        target_arch = "aarch64",
-        target_os = "windows",
-        target_env = "msvc"
-    )) {
-        println!("cargo::rustc-env=CLANG_TARGET=aarch64-pc-windows-msvc");
-        println!("cargo::rustc-env=ARCH=aarch64");
-    }
 
     let bindings = bindgen::Builder::default()
         // fix strange cross compilation error from bindgen
@@ -65,9 +78,13 @@ fn main() {
         format!("{}/{}", SUBMODULE, "include"),
         "Makefile".to_string(),
     ] {
-        run_command("cp", vec!["-R".to_string(), item, out_path_str.to_string()]);
+        run_command(
+            "cp",
+            vec!["-R".to_string(), item, out_path_str.to_string()],
+            None,
+        );
     }
-    run_command("make", vec!["-C", out_path_str, "libic.a"]);
+    run_command("make", vec!["-C", out_path_str, "libic.a"], env);
 
     println!("cargo:rustc-link-search=native={}", out_path_str);
     println!("cargo:rustc-link-lib=static={}", LIB);
