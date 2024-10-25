@@ -25,17 +25,17 @@ fn main() {
 
     let target = env::var("TARGET").unwrap();
     let sysroot = match target.as_str() {
-        "aarch64-unknown-linux-gnu" => "/usr/aarch64-linux-gnu",
-        "x86_64-unknown-linux-gnu" => "/usr/x86_64-linux-gnu",
+        "aarch64-unknown-linux-gnu" => Some("/usr/aarch64-linux-gnu"),
+        "x86_64-unknown-linux-gnu" => None,
         _ => unimplemented!(),
     };
-    println!("sysroot: {}", sysroot);
+    println!("sysroot: {:?}", sysroot);
 
     let bindings = bindgen::Builder::default()
         // fix strange cross compilation error from bindgen
         // https://github.com/rust-lang/rust-bindgen/issues/1229
         // for some reason setting sysroot to anything just works!?
-        .clang_arg(format!("--sysroot={}", sysroot))
+        .clang_arg(sysroot.map_or("".to_string(), |s| format!("--sysroot={}", s)))
         .header(format!("{}/include/vp4.h", SUBMODULE))
         .header(format!("{}/include/fp.h", SUBMODULE))
         .header(format!("{}/include/om_decoder.h", SUBMODULE))
