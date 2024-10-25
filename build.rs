@@ -37,19 +37,13 @@ fn main() {
         "aarch64-unknown-linux-gnu" => (Some("/usr/aarch64-linux-gnu"), None),
         "aarch64-pc-windows-msvc" => (
             None,
-            Some(
-                [
-                    ("CLANG_TARGET", "aarch64-pc-windows-msvc"),
-                    ("ARCH", "aarch64"),
-                ]
-                .iter()
-                .cloned()
-                .collect(),
-            ),
+            Some(HashMap::from([
+                ("CLANG_TARGET", "aarch64-pc-windows-msvc"),
+                ("ARCH", "aarch64"),
+            ])),
         ),
         _ => (None, None),
     };
-    println!("sysroot: {:?}", sysroot);
 
     let bindings = bindgen::Builder::default()
         // fix strange cross compilation error from bindgen
