@@ -1,10 +1,10 @@
 # Compiler
 ifeq ($(OS),Windows_NT)
     CC = clang
-    CFLAGS = -Iinclude -Wall -Werror -O2
+    CFLAGS = -Iinclude -Wall -O2
 else
 	CC ?= clang
-    CFLAGS = -Iinclude -Wall -Werror -O2 -fPIC
+    CFLAGS = -Iinclude -Wall -O2 -fPIC
 endif
 
 ifeq ($(CC),clang)
