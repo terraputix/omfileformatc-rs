@@ -51,6 +51,7 @@ fn main() {
         .header(format!("{}/include/vp4.h", SUBMODULE))
         .header(format!("{}/include/fp.h", SUBMODULE))
         .header(format!("{}/include/om_decoder.h", SUBMODULE))
+        .header(format!("{}/include/delta2d.h", SUBMODULE))
         .generate()
         .expect("Unable to generate bindings");
 
