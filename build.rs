@@ -40,6 +40,13 @@ fn main() {
     let compiler = build.get_compiler();
     println!("cargo:compiler={:?}", compiler.path());
 
+    // if cfg!(target_family = "wasm") {
+    if let Some(libc) = std::env::var_os("DEP_WASM32_UNKNOWN_UNKNOWN_OPENBSD_LIBC_INCLUDE") {
+        build.include(libc);
+        println!("cargo::rustc-link-lib=wasm32-unknown-unknown-openbsd-libc");
+    }
+    // }
+
     // Include directories
     build.include(format!("{}/include", SUBMODULE));
     // Add all .c files from the submodule's src directory
@@ -97,6 +104,23 @@ fn main() {
                 // This can be changed to a common baseline if necessary
                 build.flag("-march=native");
             }
+        }
+        "wasm32" => {
+            // build.define("__ARM_NEON__", None);
+            // build.flag("-mfpu=neon");
+            // WebAssembly
+            // build.flag("-msimd128");
+            build.flag("-msse2");
+            build.flag("-msse");
+            build.flag("-msse3");
+            build.flag("-mssse3");
+            build.flag("-msse4.1");
+            build.flag("-msse4.2");
+            build.flag("-mavx");
+            build.flag("-mavx2");
+
+            build.define("__AVX2__", None);
+            // build.flag("-mfma");
         }
         _ => {
             // Handle other architectures if necessary
