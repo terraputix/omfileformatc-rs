@@ -25,6 +25,7 @@ fn main() {
     let mut build = cc::Build::new();
 
     let compiler = build.get_compiler();
+    println!("cargo:compiler={:?}", compiler.path());
 
     // Include directories
     build.include(format!("{}/include", SUBMODULE));
@@ -43,9 +44,6 @@ fn main() {
         .flag("-O2");
 
     // --- Platform-specific flags ---
-    if !is_windows {
-        build.flag("-fPIC");
-    }
     if target.contains("iphone") {
         build.flag("-DHAVE_MALLOC_MALLOC");
     }
@@ -61,7 +59,7 @@ fn main() {
         "aarch64" => {
             // ARM64
             // build.flag("-march=armv8-a");
-            build.flag("-march=native");
+            build.flag("-march=armv8-a");
 
             // if compiler.is_like_clang() {
             //     build.flag("-fomit-frame-pointer");
