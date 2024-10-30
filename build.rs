@@ -1,5 +1,6 @@
 use std::env;
 use std::path::PathBuf;
+use std::process::Command;
 
 fn main() {
     // Re-run build script if these files change
@@ -24,6 +25,17 @@ fn main() {
 
     let mut build = cc::Build::new();
 
+    // We try to use clang if it is available
+    let clang_available = Command::new("clang")
+        .arg("--version")
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false);
+
+    if clang_available {
+        build.compiler("clang");
+    }
+
     let compiler = build.get_compiler();
     println!("cargo:compiler={:?}", compiler.path());
 
@@ -40,8 +52,9 @@ fn main() {
 
     // Basic compiler flags
     build
+        .flag("-O2")
         // .flag("-Wall")
-        .flag("-O2");
+        ;
 
     // --- Platform-specific flags ---
     if target.contains("iphone") {
