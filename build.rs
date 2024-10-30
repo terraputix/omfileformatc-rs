@@ -71,15 +71,15 @@ fn main() {
         "x86_64" => {
             // x86_64 Architecture
             if is_windows && compiler.is_like_msvc() {
-                // MSVC-specific flags for SSE and AVX
-                // Note: MSVC does not support /arch:SSE4.1 directly
-                // Using /arch:AVX instead, which includes SSE4.1
-                build.flag("/arch:AVX");
-                build.flag("/arch:AVX2");
-                build.flag("/arch:SSE2");
+                // // MSVC-specific flags for SSE and AVX
+                // // Note: MSVC does not support /arch:SSE4.1 directly
+                // // Using /arch:AVX instead, which includes SSE4.1
+                // build.flag("/arch:AVX");
+                // build.flag("/arch:AVX2");
+                // build.flag("/arch:SSE2");
 
-                // // Define __SSE2__ manually for MSVC
-                build.define("__SSE2__", None);
+                // // // Define __SSE2__ manually for MSVC
+                // build.define("__SSE2__", None);
             } else {
                 // For now just build for the native architecture
                 // This can be changed to a common baseline if necessary
