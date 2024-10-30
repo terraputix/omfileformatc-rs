@@ -5,8 +5,7 @@ pre-build = [
 ]
 [target.aarch64-unknown-linux-gnu.env]
 passthrough = [
-    # "CC=clang-10",
+    "CC=clang-10",
+    "CRATE_CC_NO_DEFAULTS=1",
     "SYSROOT=/usr/aarch64-linux-gnu",
-    "CLANG_TARGET=aarch64-unknown-linux-gnu",
-    "ARCH=aarch64",
 ]
