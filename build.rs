@@ -78,8 +78,8 @@ fn main() {
                 build.flag("/arch:AVX2");
                 build.flag("/arch:SSE2");
 
-                // // Define __SSE4_1__ manually for MSVC
-                // build.define("__SSE4_1__", None);
+                // // Define __SSE2__ manually for MSVC
+                build.define("__SSE2__", None);
             } else {
                 // For now just build for the native architecture
                 // This can be changed to a common baseline if necessary
