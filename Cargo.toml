@@ -10,7 +10,6 @@ description = "OmFileFormatC rust bindings"
 include = [
     "open-meteo/Sources/OmFileFormatC/include/**/*.h",
     "open-meteo/Sources/OmFileFormatC/src/**/*.c",
-    "Makefile",
     "src/**/*",
     "Cargo.toml",
     "build.rs",
