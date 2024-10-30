@@ -13,6 +13,8 @@ fn main() {
     let target = env::var("TARGET").unwrap();
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
 
+    let is_windows = target.contains("windows");
+
     // Set sysroot for cross compilation directly
     let sysroot = if target == "aarch64-unknown-linux-gnu" {
         Some("/usr/aarch64-linux-gnu")
@@ -21,6 +23,8 @@ fn main() {
     };
 
     let mut build = cc::Build::new();
+
+    let compiler = build.get_compiler();
 
     // Include directories
     build.include(format!("{}/include", SUBMODULE));
@@ -39,17 +43,26 @@ fn main() {
         .flag("-O2");
 
     // Add -fPIC for non-Windows targets
-    if !target.contains("windows") {
+    if !is_windows {
         build.flag("-fPIC");
     }
 
     if arch == "x86_64" {
-        // Add SSE flags
-        build.flag("-msse4.1");
+        if is_windows && compiler.is_like_msvc() {
+            // Add SSE flags for MSVC
+            build.flag("/arch:SSE4.1");
 
-        // Optionally add AVX2 flags if AVX2=1 is set
-        if env::var("AVX2").unwrap_or_default() == "1" {
-            build.flag("-mavx2");
+            // Optionally add AVX2 flags if AVX2=1 is set
+            if env::var("AVX2").unwrap_or_default() == "1" {
+                build.flag("/arch:AVX2");
+            }
+        } else {
+            // Add SSE flags for GCC/Clang
+            build.flag("-msse4.1");
+            // Optionally add AVX2 flags if AVX2=1 is set
+            if env::var("AVX2").unwrap_or_default() == "1" {
+                build.flag("-mavx2");
+            }
         }
     } else if arch == "aarch64" {
         build.flag("-march=armv8-a");
