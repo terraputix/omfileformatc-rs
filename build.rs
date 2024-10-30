@@ -42,32 +42,53 @@ fn main() {
         // .flag("-Wall")
         .flag("-O2");
 
-    // Add -fPIC for non-Windows targets
+    // --- Platform-specific flags ---
     if !is_windows {
         build.flag("-fPIC");
     }
+    if target.contains("iphone") {
+        build.flag("-DHAVE_MALLOC_MALLOC");
+    }
 
-    if arch == "x86_64" {
-        if is_windows && compiler.is_like_msvc() {
-            // Add SSE flags for MSVC
-            build.flag("/arch:AVX");
+    // --- Architecture-specific flags ---
+    match arch.as_str() {
+        "ppc64le" => {
+            // PowerPC 64 Little Endian
+            build.define("__SSSE3__", None);
+            build.flag("-mcpu=power9");
+            build.flag("-mtune=power9");
+        }
+        "aarch64" => {
+            // ARM64
+            build.flag("-march=armv8-a");
 
-            // Optionally add AVX2 flags if AVX2=1 is set
-            if env::var("AVX2").unwrap_or_default() == "1" {
+            // if compiler.is_like_clang() {
+            //     build.flag("-fomit-frame-pointer");
+            //     // Uncomment the following line if you need to set the macro limit for Clang
+            //     // build.flag("-fmacro-backtrace-limit=0");
+            // }
+        }
+        "x86_64" => {
+            // x86_64 Architecture
+            if is_windows && compiler.is_like_msvc() {
+                // MSVC-specific flags for SSE and AVX
+                // Note: MSVC does not support /arch:SSE4.1 directly
+                // Using /arch:AVX instead, which includes SSE4.1
+                build.flag("/arch:AVX");
                 build.flag("/arch:AVX2");
-            }
-        } else {
-            // Add SSE flags for GCC/Clang
-            build.flag("-msse4.1");
-            // Optionally add AVX2 flags if AVX2=1 is set
-            if env::var("AVX2").unwrap_or_default() == "1" {
-                build.flag("-mavx2");
+                build.flag("/arch:SSE2");
+
+                // // Define __SSE4_1__ manually for MSVC
+                // build.define("__SSE4_1__", None);
+            } else {
+                // For now just build for the native architecture
+                // This can be changed to a common baseline if necessary
+                build.flag("-march=native");
             }
         }
-    } else if arch == "aarch64" {
-        build.flag("-march=armv8-a");
-    } else if arch.contains("iphone") {
-        build.flag("-DHAVE_MALLOC_MALLOC");
+        _ => {
+            // Handle other architectures if necessary
+        }
     }
 
     // Set sysroot if specified
