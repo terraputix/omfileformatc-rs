@@ -60,7 +60,8 @@ fn main() {
         }
         "aarch64" => {
             // ARM64
-            build.flag("-march=armv8-a");
+            // build.flag("-march=armv8-a");
+            build.flag("-march=native");
 
             // if compiler.is_like_clang() {
             //     build.flag("-fomit-frame-pointer");
