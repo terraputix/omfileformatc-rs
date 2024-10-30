@@ -63,6 +63,7 @@ fn main() {
     }
 
     // Compile the library
+    build.warnings(false);
     build.compile(LIB_NAME);
 
     // Generate bindings using bindgen
