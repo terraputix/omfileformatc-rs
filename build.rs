@@ -14,14 +14,12 @@ fn main() {
     let target = env::var("TARGET").unwrap();
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
 
-    let is_windows = target.contains("windows");
+    // Get sysroot from environment if it is set
+    // This might be required for cross-compilation
+    // compare: https://github.com/rust-lang/rust-bindgen/issues/1229
+    let sysroot = env::var("SYSROOT").ok();
 
-    // Set sysroot for cross compilation directly
-    let sysroot = if target == "aarch64-unknown-linux-gnu" {
-        Some("/usr/aarch64-linux-gnu")
-    } else {
-        None
-    };
+    let is_windows = target.contains("windows");
 
     let mut build = cc::Build::new();
 
@@ -35,6 +33,9 @@ fn main() {
     if clang_available {
         build.compiler("clang");
     }
+
+    // respect CC env variable if set
+    let _ = env::var("CC").map(|cc| build.compiler(cc));
 
     let compiler = build.get_compiler();
     println!("cargo:compiler={:?}", compiler.path());
@@ -71,7 +72,6 @@ fn main() {
         }
         "aarch64" => {
             // ARM64
-            // build.flag("-march=armv8-a");
             build.flag("-march=armv8-a");
 
             // if compiler.is_like_clang() {
@@ -104,7 +104,7 @@ fn main() {
     }
 
     // Set sysroot if specified
-    if let Some(sysroot_path) = sysroot {
+    if let Some(sysroot_path) = &sysroot {
         build.flag(&format!("--sysroot={}", sysroot_path));
     }
 
