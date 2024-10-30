@@ -50,7 +50,7 @@ fn main() {
     if arch == "x86_64" {
         if is_windows && compiler.is_like_msvc() {
             // Add SSE flags for MSVC
-            build.flag("/arch:SSE4.1");
+            build.flag("/arch:AVX");
 
             // Optionally add AVX2 flags if AVX2=1 is set
             if env::var("AVX2").unwrap_or_default() == "1" {
