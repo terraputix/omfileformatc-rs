@@ -1,53 +1,75 @@
-use std::collections::HashMap;
 use std::env;
-use std::ffi::OsStr;
 use std::path::PathBuf;
-use std::process::Command;
 
-const SUBMODULE: &str = "open-meteo/Sources/OmFileFormatC";
-const LIB: &str = "ic";
+fn main() {
+    // Re-run build script if these files change
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=src/lib.rs");
 
-fn run_command<I, S>(prog: &str, args: I, envs: Option<HashMap<&str, &str>>)
-where
-    I: IntoIterator<Item = S>,
-    S: AsRef<OsStr>,
-{
-    let mut command = Command::new(prog);
-    command.args(args);
+    const SUBMODULE: &str = "open-meteo/Sources/OmFileFormatC";
+    const LIB_NAME: &str = "ic";
 
-    if let Some(env_vars) = envs {
-        for (key, value) in env_vars {
-            command.env(key, value);
+    // Determine the target and arch
+    let target = env::var("TARGET").unwrap();
+    let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+
+    // Set sysroot for cross compilation directly
+    let sysroot = if target == "aarch64-unknown-linux-gnu" {
+        Some("/usr/aarch64-linux-gnu")
+    } else {
+        None
+    };
+
+    let mut build = cc::Build::new();
+
+    // Include directories
+    build.include(format!("{}/include", SUBMODULE));
+    // Add all .c files from the submodule's src directory
+    let src_path = format!("{}/src", SUBMODULE);
+    for entry in std::fs::read_dir(&src_path).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().and_then(|e| e.to_str()) == Some("c") {
+            build.file(path);
         }
     }
 
-    let output = command.output().expect("failed to start command");
-    assert!(output.status.success(), "{:?}", output);
-}
+    // Basic compiler flags
+    build
+        // .flag("-Wall")
+        .flag("-O2");
 
-fn main() {
-    println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=src/lib.rs");
-    println!("cargo:rerun-if-changed=Makefile");
+    // Add -fPIC for non-Windows targets
+    if !target.contains("windows") {
+        build.flag("-fPIC");
+    }
 
-    let target = env::var("TARGET").unwrap();
-    let (sysroot, env): (Option<&str>, Option<HashMap<&str, &str>>) = match target.as_str() {
-        "aarch64-unknown-linux-gnu" => (Some("/usr/aarch64-linux-gnu"), None),
-        // "aarch64-pc-windows-msvc" => (
-        //     None,
-        //     Some(HashMap::from([
-        //         ("CLANG_TARGET", "aarch64-pc-windows-msvc"),
-        //         ("ARCH", "aarch64"),
-        //     ])),
-        // ),
-        _ => (None, None),
-    };
+    if arch == "x86_64" {
+        // Add SSE flags
+        build.flag("-msse4.1");
 
+        // Optionally add AVX2 flags if AVX2=1 is set
+        if env::var("AVX2").unwrap_or_default() == "1" {
+            build.flag("-mavx2");
+        }
+    } else if arch == "aarch64" {
+        build.flag("-march=armv8-a");
+    } else if arch.contains("iphone") {
+        build.flag("-DHAVE_MALLOC_MALLOC");
+    }
+
+    // Set sysroot if specified
+    if let Some(sysroot_path) = sysroot {
+        build.flag(&format!("--sysroot={}", sysroot_path));
+    }
+
+    // Compile the library
+    build.compile(LIB_NAME);
+
+    // Generate bindings using bindgen
     let bindings = bindgen::Builder::default()
-        // fix strange cross compilation error from bindgen
-        // https://github.com/rust-lang/rust-bindgen/issues/1229
-        // for some reason setting sysroot to anything just works!?
+        // Set sysroot for bindgen if specified
         .clang_arg(sysroot.map_or("".to_string(), |s| format!("--sysroot={}", s)))
+        .clang_arg(format!("-I{}/include", SUBMODULE))
         .header(format!("{}/include/vp4.h", SUBMODULE))
         .header(format!("{}/include/fp.h", SUBMODULE))
         .header(format!("{}/include/om_decoder.h", SUBMODULE))
@@ -55,30 +77,12 @@ fn main() {
         .generate()
         .expect("Unable to generate bindings");
 
+    // Write the bindings to the $OUT_DIR/bindings.rs
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
 
-    let out_path_str = out_path.to_str().unwrap();
-
-    // We do the build in the out dir instead of in source, since it pollutes
-    // the lib directory.
-    // Copy the source files to the build directory and build the library.
-    // First we copy headers and C files from the submodule.
-    for item in [
-        format!("{}/{}", SUBMODULE, "src"),
-        format!("{}/{}", SUBMODULE, "include"),
-        "Makefile".to_string(),
-    ] {
-        run_command(
-            "cp",
-            vec!["-R".to_string(), item, out_path_str.to_string()],
-            None,
-        );
-    }
-    run_command("make", vec!["-C", out_path_str, "libic.a"], env);
-
-    println!("cargo:rustc-link-search=native={}", out_path_str);
-    println!("cargo:rustc-link-lib=static={}", LIB);
+    // Link the static library
+    println!("cargo:rustc-link-lib=static={}", LIB_NAME);
 }
