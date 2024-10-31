@@ -9,3 +9,14 @@ passthrough = [
     # "CC_ENABLE_DEBUG_OUTPUT=1",
     "SYSROOT=/usr/aarch64-linux-gnu",
 ]
+
+[target.powerpc64le-unknown-linux-gnu]
+image = "ghcr.io/cross-rs/powerpc64le-unknown-linux-gnu:edge"
+pre-build = [
+    "cat /etc/os-release && apt-get update && apt-get install --assume-yes --no-install-recommends libclang-10-dev clang-10 && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 100 && clang --version",
+]
+[target.powerpc64le-unknown-linux-gnu.env]
+passthrough = ["SYSROOT=/usr/powerpc64le-linux-gnu"]
+
+[target.wasm32-unknown-emscripten]
+image = "ghcr.io/cross-rs/wasm32-unknown-emscripten:edge"

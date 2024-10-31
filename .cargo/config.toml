@@ -1,2 +1,13 @@
 # [target.aarch64-pc-windows-msvc]
 # linker = "lld-link.exe"
+
+[target.powerpc64le-unknown-linux-gnu]
+# linker = "clang"
+rustflags = [
+    "-C",
+    "link-arg=-v",                             # Verbose output
+    "-C",
+    "link-arg=-Wl,--trace",                    # Trace all linker operations
+    "-C",
+    "link-arg=-Wl,--trace-symbol=p4dec128v32", # Trace specific symbol
+]

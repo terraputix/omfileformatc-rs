@@ -8,7 +8,7 @@ fn main() {
     println!("cargo:rerun-if-changed=src/lib.rs");
 
     const SUBMODULE: &str = "open-meteo/Sources/OmFileFormatC";
-    const LIB_NAME: &str = "ic";
+    const LIB_NAME: &str = "omfileformatc";
 
     // Determine the target and arch
     let target = env::var("TARGET").unwrap();
@@ -74,6 +74,7 @@ fn main() {
         "ppc64le" => {
             // PowerPC 64 Little Endian
             build.define("__SSSE3__", None);
+            build.define("__SSE2__", None);
             build.flag("-mcpu=power9");
             build.flag("-mtune=power9");
         }
@@ -106,21 +107,23 @@ fn main() {
             }
         }
         "wasm32" => {
-            // build.define("__ARM_NEON__", None);
-            // build.flag("-mfpu=neon");
+            build.flag("-msimd128");
+            build.flag("-sMEMORY64");
+            build.flag("-mssse3");
+            build.define("__SSSE3__", None);
+            build.define("__SSE2__", None);
+            build.define("__SSE__", None);
+
             // WebAssembly
             // build.flag("-msimd128");
-            build.flag("-msse2");
-            build.flag("-msse");
-            build.flag("-msse3");
-            build.flag("-mssse3");
-            build.flag("-msse4.1");
-            build.flag("-msse4.2");
-            build.flag("-mavx");
-            build.flag("-mavx2");
-
-            build.define("__AVX2__", None);
-            // build.flag("-mfma");
+            // build.flag("-msse2");
+            // build.flag("-msse");
+            // build.flag("-msse3");
+            // build.flag("-mssse3");
+            // build.flag("-msse4.1");
+            // build.flag("-msse4.2");
+            // build.flag("-mavx");
+            // build.flag("-mavx2");
         }
         _ => {
             // Handle other architectures if necessary

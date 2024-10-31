@@ -1,0 +1,6 @@
+{
+  "rust-analyzer.checkOnSave": false,
+  "files.associations": {
+    "cstdint": "c"
+  }
+}
