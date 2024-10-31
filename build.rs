@@ -8,7 +8,7 @@ fn main() {
     println!("cargo:rerun-if-changed=src/lib.rs");
 
     const SUBMODULE: &str = "open-meteo/Sources/OmFileFormatC";
-    const LIB_NAME: &str = "ic";
+    const LIB_NAME: &str = "omfileformatc";
 
     // Determine the target and arch
     let target = env::var("TARGET").unwrap();
@@ -53,23 +53,11 @@ fn main() {
 
     // Basic compiler flags
     build
-        .flag("-O2")
         // .flag("-Wall")
-        ;
-
-    // --- Platform-specific flags ---
-    if target.contains("iphone") {
-        build.flag("-DHAVE_MALLOC_MALLOC");
-    }
+        .flag("-O3");
 
     // --- Architecture-specific flags ---
     match arch.as_str() {
-        "ppc64le" => {
-            // PowerPC 64 Little Endian
-            build.define("__SSSE3__", None);
-            build.flag("-mcpu=power9");
-            build.flag("-mtune=power9");
-        }
         "aarch64" => {
             // ARM64
             build.flag("-march=armv8-a");
@@ -114,7 +102,7 @@ fn main() {
 
     // Generate bindings using bindgen
     let bindings = bindgen::Builder::default()
-        // Set sysroot for bindgen if specified
+        // Set sysroot for bindgen if specified (for cross compilation)
         .clang_arg(sysroot.map_or("".to_string(), |s| format!("--sysroot={}", s)))
         .clang_arg(format!("-I{}/include", SUBMODULE))
         .header(format!("{}/include/vp4.h", SUBMODULE))
@@ -124,7 +112,7 @@ fn main() {
         .generate()
         .expect("Unable to generate bindings");
 
-    // Write the bindings to the $OUT_DIR/bindings.rs
+    // Write the bindings to the $OUT_DIR/bindings.rs file
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
         .write_to_file(out_path.join("bindings.rs"))
