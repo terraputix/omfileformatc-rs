@@ -105,10 +105,7 @@ fn main() {
         // Set sysroot for bindgen if specified (for cross compilation)
         .clang_arg(sysroot.map_or("".to_string(), |s| format!("--sysroot={}", s)))
         .clang_arg(format!("-I{}/include", SUBMODULE))
-        .header(format!("{}/include/vp4.h", SUBMODULE))
-        .header(format!("{}/include/fp.h", SUBMODULE))
-        .header(format!("{}/include/om_decoder.h", SUBMODULE))
-        .header(format!("{}/include/delta2d.h", SUBMODULE))
+        .header(format!("{}/include/om_file_format.h", SUBMODULE))
         .generate()
         .expect("Unable to generate bindings");
 
