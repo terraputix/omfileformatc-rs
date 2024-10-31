@@ -1,53 +1,110 @@
-use std::collections::HashMap;
 use std::env;
-use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process::Command;
 
-const SUBMODULE: &str = "open-meteo/Sources/OmFileFormatC";
-const LIB: &str = "ic";
+fn main() {
+    // Re-run build script if these files change
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=src/lib.rs");
 
-fn run_command<I, S>(prog: &str, args: I, envs: Option<HashMap<&str, &str>>)
-where
-    I: IntoIterator<Item = S>,
-    S: AsRef<OsStr>,
-{
-    let mut command = Command::new(prog);
-    command.args(args);
+    const SUBMODULE: &str = "open-meteo/Sources/OmFileFormatC";
+    const LIB_NAME: &str = "omfileformatc";
 
-    if let Some(env_vars) = envs {
-        for (key, value) in env_vars {
-            command.env(key, value);
+    // Determine the target and arch
+    let target = env::var("TARGET").unwrap();
+    let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+
+    // Get sysroot from environment if it is set
+    // This might be required for cross-compilation
+    // compare: https://github.com/rust-lang/rust-bindgen/issues/1229
+    let sysroot = env::var("SYSROOT").ok();
+
+    let is_windows = target.contains("windows");
+
+    let mut build = cc::Build::new();
+
+    // We try to use clang if it is available
+    let clang_available = Command::new("clang")
+        .arg("--version")
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false);
+
+    if clang_available {
+        build.compiler("clang");
+    }
+
+    // respect CC env variable if set
+    let _ = env::var("CC").map(|cc| build.compiler(cc));
+
+    let compiler = build.get_compiler();
+    println!("cargo:compiler={:?}", compiler.path());
+
+    // Include directories
+    build.include(format!("{}/include", SUBMODULE));
+    // Add all .c files from the submodule's src directory
+    let src_path = format!("{}/src", SUBMODULE);
+    for entry in std::fs::read_dir(&src_path).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().and_then(|e| e.to_str()) == Some("c") {
+            build.file(path);
         }
     }
 
-    let output = command.output().expect("failed to start command");
-    assert!(output.status.success(), "{:?}", output);
-}
+    // Basic compiler flags
+    build
+        // .flag("-Wall")
+        .flag("-O3");
 
-fn main() {
-    println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=src/lib.rs");
-    println!("cargo:rerun-if-changed=Makefile");
+    // --- Architecture-specific flags ---
+    match arch.as_str() {
+        "aarch64" => {
+            // ARM64
+            build.flag("-march=armv8-a");
 
-    let target = env::var("TARGET").unwrap();
-    let (sysroot, env): (Option<&str>, Option<HashMap<&str, &str>>) = match target.as_str() {
-        "aarch64-unknown-linux-gnu" => (Some("/usr/aarch64-linux-gnu"), None),
-        // "aarch64-pc-windows-msvc" => (
-        //     None,
-        //     Some(HashMap::from([
-        //         ("CLANG_TARGET", "aarch64-pc-windows-msvc"),
-        //         ("ARCH", "aarch64"),
-        //     ])),
-        // ),
-        _ => (None, None),
-    };
+            // if compiler.is_like_clang() {
+            //     build.flag("-fomit-frame-pointer");
+            //     // Uncomment the following line if you need to set the macro limit for Clang
+            //     // build.flag("-fmacro-backtrace-limit=0");
+            // }
+        }
+        "x86_64" => {
+            // x86_64 Architecture
+            if is_windows && compiler.is_like_msvc() {
+                // // MSVC-specific flags for SSE and AVX
+                // // Note: MSVC does not support /arch:SSE4.1 directly
+                // // Using /arch:AVX instead, which includes SSE4.1
+                // build.flag("/arch:AVX");
+                // build.flag("/arch:AVX2");
+                // build.flag("/arch:SSE2");
 
+                // // // Define __SSE2__ manually for MSVC
+                // build.define("__SSE2__", None);
+            } else {
+                // For now just build for the native architecture
+                // This can be changed to a common baseline if necessary
+                build.flag("-march=native");
+            }
+        }
+        _ => {
+            // Handle other architectures if necessary
+        }
+    }
+
+    // Set sysroot if specified
+    if let Some(sysroot_path) = &sysroot {
+        build.flag(&format!("--sysroot={}", sysroot_path));
+    }
+
+    // Compile the library
+    build.warnings(false);
+    build.compile(LIB_NAME);
+
+    // Generate bindings using bindgen
     let bindings = bindgen::Builder::default()
-        // fix strange cross compilation error from bindgen
-        // https://github.com/rust-lang/rust-bindgen/issues/1229
-        // for some reason setting sysroot to anything just works!?
+        // Set sysroot for bindgen if specified (for cross compilation)
         .clang_arg(sysroot.map_or("".to_string(), |s| format!("--sysroot={}", s)))
+        .clang_arg(format!("-I{}/include", SUBMODULE))
         .header(format!("{}/include/vp4.h", SUBMODULE))
         .header(format!("{}/include/fp.h", SUBMODULE))
         .header(format!("{}/include/om_decoder.h", SUBMODULE))
@@ -55,30 +112,12 @@ fn main() {
         .generate()
         .expect("Unable to generate bindings");
 
+    // Write the bindings to the $OUT_DIR/bindings.rs file
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
 
-    let out_path_str = out_path.to_str().unwrap();
-
-    // We do the build in the out dir instead of in source, since it pollutes
-    // the lib directory.
-    // Copy the source files to the build directory and build the library.
-    // First we copy headers and C files from the submodule.
-    for item in [
-        format!("{}/{}", SUBMODULE, "src"),
-        format!("{}/{}", SUBMODULE, "include"),
-        "Makefile".to_string(),
-    ] {
-        run_command(
-            "cp",
-            vec!["-R".to_string(), item, out_path_str.to_string()],
-            None,
-        );
-    }
-    run_command("make", vec!["-C", out_path_str, "libic.a"], env);
-
-    println!("cargo:rustc-link-search=native={}", out_path_str);
-    println!("cargo:rustc-link-lib=static={}", LIB);
+    // Link the static library
+    println!("cargo:rustc-link-lib=static={}", LIB_NAME);
 }
