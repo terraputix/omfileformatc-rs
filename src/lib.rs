@@ -3,44 +3,8 @@
 #![allow(non_snake_case)]
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-// re-export the symbols for the C API because rust will loose them for wasm
-// because the crate type needs to be cdylib
-// https://github.com/rust-lang/rfcs/issues/2771#issuecomment-363695407
-#[doc(hidden)]
-#[macro_export]
-macro_rules! export_c_symbol {
-    (fn $name:ident($( $arg:ident : $type:ty ),*) -> $ret:ty) => {
-        paste::paste! {
-            #[no_mangle]
-            pub unsafe extern "C" fn [< _$name >]($( $arg : $type),*) -> $ret {
-                $crate::$name($( $arg ),*)
-            }
-        }
-    };
-    (fn $name:ident($( $arg:ident : $type:ty ),*)) => {
-        export_c_symbol!(fn $name($( $arg : $type),*) -> ());
-    }
-}
-
-/// As a workaround for rust-lang/rust#6342, you can use this macro to make sure
-/// the symbols for `ffi_utils`'s error handling are correctly exported in your
-/// `cdylib`.
-#[macro_export]
-macro_rules! export_om_fileformatc_symbols {
-    () => {
-    export_c_symbol!(fn fpxenc32(in_: *mut u32, n: usize, out: *mut ::std::os::raw::c_uchar, start: u32) -> usize);
-    // export_c_symbol!(fn last_error_length() -> ::libc::c_int);
-    // export_c_symbol!(fn last_error_length_utf16() -> ::libc::c_int);
-    // export_c_symbol!(fn error_message_utf8(buf: *mut ::libc::c_char, length: ::libc::c_int) -> ::libc::c_int);
-    // export_c_symbol!(fn error_message_utf16(buf: *mut u16, length: ::libc::c_int) -> ::libc::c_int);
-    };
-}
-
 #[cfg(test)]
 mod tests {
-
-    export_om_fileformatc_symbols!();
-
     #[test]
     fn test_round_trip_p4n() {
         const n: usize = 3;
