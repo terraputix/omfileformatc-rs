@@ -23,8 +23,6 @@ license = "GPL-2.0-or-later"
 [dependencies]
 # [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 libc = "0.2"
-paste = "1.0"
-# wasm_bindgen = "0.2"
 
 # [target.'cfg(target_arch = "wasm32")'.dependencies]
 # wasm32-unknown-unknown-openbsd-libc = "0.2"
