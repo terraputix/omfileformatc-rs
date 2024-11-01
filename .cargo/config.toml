@@ -13,6 +13,7 @@ rustflags = [
 rustflags = [
     # "-Clink-arg=-sSIDE_MODULE=2", # build a side module that Godot can load
     # "-Zlink-native-libraries=no", # workaround for a wasm-ld error during linking
-    "-Cpanic=abort", # workaround for a runtime error related to dyncalls
+    "-Cpanic=abort",         # workaround for a runtime error related to dyncalls
+    "-Clink-arg=--no-entry", # don't generate a main function because we currently don't have it
     # "-Zwasm_c_abi=spec", # use the WebAssembly System Interface (WASI) ABI
 ]

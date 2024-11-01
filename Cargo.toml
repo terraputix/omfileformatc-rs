@@ -17,8 +17,8 @@ include = [
 ]
 license = "GPL-2.0-or-later"
 
-# [lib]
-# crate-type = ["cdylib", "rlib"]
+[lib]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
