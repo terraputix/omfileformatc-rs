@@ -41,10 +41,10 @@ fn main() {
     println!("cargo:compiler={:?}", compiler.path());
 
     // if cfg!(target_family = "wasm") {
-    if let Some(libc) = std::env::var_os("DEP_WASM32_UNKNOWN_UNKNOWN_OPENBSD_LIBC_INCLUDE") {
-        build.include(libc);
-        println!("cargo::rustc-link-lib=wasm32-unknown-unknown-openbsd-libc");
-    }
+    // if let Some(libc) = std::env::var_os("DEP_WASM32_UNKNOWN_UNKNOWN_OPENBSD_LIBC_INCLUDE") {
+    //     build.include(libc);
+    //     println!("cargo::rustc-link-lib=wasm32-unknown-unknown-openbsd-libc");
+    // }
     // }
 
     // Include directories
@@ -101,23 +101,14 @@ fn main() {
             }
         }
         "wasm32" => {
+            println!("cargo:warning=WebAssembly target detected");
             build.flag("-msimd128");
-            build.flag("-sMEMORY64");
-            build.flag("-mssse3");
-            build.define("__SSSE3__", None);
-            build.define("__SSE2__", None);
-            build.define("__SSE__", None);
-
-            // WebAssembly
-            // build.flag("-msimd128");
-            // build.flag("-msse2");
-            // build.flag("-msse");
-            // build.flag("-msse3");
-            // build.flag("-mssse3");
-            // build.flag("-msse4.1");
-            // build.flag("-msse4.2");
-            // build.flag("-mavx");
-            // build.flag("-mavx2");
+            build.flag("-mavx");
+            build.flag("--no-entry");
+            build.flag("-s");
+            build.flag("SIDE_MODULE=1");
+            build.flag("-s");
+            build.flag("RELOCATABLE=1");
         }
         _ => {
             // Handle other architectures if necessary
@@ -133,10 +124,12 @@ fn main() {
     build.warnings(false);
     build.compile(LIB_NAME);
 
+    println!("cargo:warning=Building bindings");
+
     // Generate bindings using bindgen
     let bindings = bindgen::Builder::default()
         // Set sysroot for bindgen if specified (for cross compilation)
-        .clang_arg(sysroot.map_or("".to_string(), |s| format!("--sysroot={}", s)))
+        // .clang_arg(sysroot.map_or("".to_string(), |s| format!("--sysroot={}", s)))
         .clang_arg(format!("-I{}/include", SUBMODULE))
         .header(format!("{}/include/vp4.h", SUBMODULE))
         .header(format!("{}/include/fp.h", SUBMODULE))
@@ -152,5 +145,34 @@ fn main() {
         .expect("Couldn't write bindings!");
 
     // Link the static library
-    println!("cargo:rustc-link-lib=static={}", LIB_NAME);
+    // Link the object files and static library into a single WebAssembly binary
+    // if target.contains("wasm32") {
+    //     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    //     let mut object_files = Vec::new();
+
+    //     for entry in std::fs::read_dir(&out_dir).unwrap() {
+    //         let path = entry.unwrap().path();
+    //         if path.extension().and_then(|e| e.to_str()) == Some("o") {
+    //             object_files.push(path);
+    //         }
+    //     }
+
+    //     let output_wasm = out_dir.join("advanced_maths.wasm");
+    //     let mut command = Command::new("wasm-ld");
+    //     command
+    //         .arg("--no-entry")
+    //         .arg("--export-all")
+    //         .arg("-o")
+    //         .arg(output_wasm)
+    //         .args(&object_files);
+
+    //     let status = command.status().expect("Failed to run wasm-ld");
+    //     if !status.success() {
+    //         panic!("wasm-ld failed with status: {}", status);
+    //     }
+    // } else {
+    //     println!("cargo:rustc-link-lib=static={}", LIB_NAME);
+    // }
+
+    // println!("cargo:rustc-link-lib=static={}", LIB_NAME);
 }
