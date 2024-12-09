@@ -21,6 +21,11 @@ fn main() {
 
     let is_windows = target.contains("windows");
 
+    // Check for MARCH_SKYLAKE environment variable
+    let use_skylake = env::var("MARCH_SKYLAKE")
+        .map(|v| v == "TRUE")
+        .unwrap_or(false);
+
     let mut build = cc::Build::new();
 
     // We try to use clang if it is available
@@ -71,19 +76,24 @@ fn main() {
         "x86_64" => {
             // x86_64 Architecture
             if is_windows && compiler.is_like_msvc() {
-                // // MSVC-specific flags for SSE and AVX
-                // // Note: MSVC does not support /arch:SSE4.1 directly
-                // // Using /arch:AVX instead, which includes SSE4.1
+                // MSVC-specific flags for SSE and AVX
+                // Note: MSVC does not support /arch:SSE4.1 directly
+                // Using /arch:AVX instead, which includes SSE4.1
                 // build.flag("/arch:AVX");
                 // build.flag("/arch:AVX2");
                 // build.flag("/arch:SSE2");
 
-                // // // Define __SSE2__ manually for MSVC
+                // Define __SSE2__ manually for MSVC
                 // build.define("__SSE2__", None);
             } else {
-                // For now just build for the native architecture
-                // This can be changed to a common baseline if necessary
-                build.flag("-march=native");
+                // Choose between skylake and native based on environment variable
+                if use_skylake {
+                    build.flag("-march=skylake");
+                    println!("cargo:warning=Using -march=skylake");
+                } else {
+                    build.flag("-march=native");
+                    println!("cargo:warning=Using -march=native");
+                }
             }
         }
         _ => {
