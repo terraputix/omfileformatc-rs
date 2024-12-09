@@ -5,6 +5,8 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 #[cfg(test)]
 mod tests {
+    use crate::om_encoder_init;
+
     #[test]
     fn test_round_trip_p4n() {
         const n: usize = 3;
@@ -146,5 +148,68 @@ mod tests {
         }
         let expected: Vec<i16> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         assert_eq!(buffer, expected);
+    }
+
+    #[test]
+    fn test_compress_empty_data_chunk() {
+        let mut encoder = crate::OmEncoder_t {
+            dimension_count: 0,
+            lut_chunk_element_count: 0,
+            dimensions: std::ptr::null_mut(),
+            chunks: std::ptr::null_mut(),
+            compress_callback: None,
+            compress_filter_callback: None,
+            compress_copy_callback: None,
+            scale_factor: 0.0,
+            add_offset: 0.0,
+            bytes_per_element: 0,
+            bytes_per_element_compressed: 0,
+        };
+
+        let dimensions = vec![1000, 1000];
+        let chunks = vec![10, 10];
+        let lut_chunk_element_count = 256;
+
+        let _error = unsafe {
+            om_encoder_init(
+                &mut encoder,
+                1.0,
+                0.0,
+                1,  // p4nzdec256
+                20, // float array
+                dimensions.as_ptr(),
+                chunks.as_ptr(),
+                dimensions.len() as u64,
+                lut_chunk_element_count,
+            )
+        };
+
+        let data = vec![0.0; 1000];
+        let mut compressed = vec![0; 1000];
+        let mut chunk_buffer = vec![0u8; 1000];
+
+        let array_offset = vec![0; 2];
+        let array_count = vec![1000; 2];
+        let chunk_index = 0;
+        let chunk_offset = 0;
+
+        let bytes_written = unsafe {
+            let array_ptr = data.as_slice().as_ptr() as *const std::os::raw::c_void;
+
+            crate::om_encoder_compress_chunk(
+                &mut encoder,
+                array_ptr,
+                dimensions.as_ptr(),
+                array_offset.as_ptr(),
+                array_count.as_ptr(),
+                chunk_index,
+                chunk_offset,
+                compressed.as_mut_slice().as_mut_ptr(),
+                chunk_buffer.as_mut_ptr(),
+            )
+        };
+
+        assert_eq!(bytes_written, 15);
+        drop(data);
     }
 }
