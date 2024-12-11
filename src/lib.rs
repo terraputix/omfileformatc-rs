@@ -152,6 +152,17 @@ mod tests {
 
     #[test]
     fn test_compress_empty_data_chunk() {
+        let dimensions = vec![1000, 1000];
+        let chunks = vec![10, 10];
+        let lut_chunk_element_count = 256;
+
+        let data = vec![0.0; 1000];
+
+        let array_offset = vec![0; 2];
+        let array_count = vec![1000; 2];
+        let chunk_index = 0;
+        let chunk_offset = 0;
+
         let mut encoder = crate::OmEncoder_t {
             dimension_count: 0,
             lut_chunk_element_count: 0,
@@ -165,10 +176,6 @@ mod tests {
             bytes_per_element: 0,
             bytes_per_element_compressed: 0,
         };
-
-        let dimensions = vec![1000, 1000];
-        let chunks = vec![10, 10];
-        let lut_chunk_element_count = 256;
 
         let error = unsafe {
             om_encoder_init(
@@ -184,25 +191,15 @@ mod tests {
             )
         };
 
-        if error != OmError_t_ERROR_OK {
-            assert!(false, "Initialized with error");
-        }
+        assert!(error == OmError_t_ERROR_OK, "Initialized with error");
 
-        let data = vec![0.0; 1000];
         let mut compressed = vec![0; 1000];
         let mut chunk_buffer = vec![0u8; 1000];
 
-        let array_offset = vec![0; 2];
-        let array_count = vec![1000; 2];
-        let chunk_index = 0;
-        let chunk_offset = 0;
-
         let bytes_written = unsafe {
-            let array_ptr = data.as_slice().as_ptr() as *const std::os::raw::c_void;
-
             crate::om_encoder_compress_chunk(
                 &mut encoder,
-                array_ptr,
+                data.as_slice().as_ptr() as *const std::os::raw::c_void,
                 dimensions.as_ptr(),
                 array_offset.as_ptr(),
                 array_count.as_ptr(),
@@ -218,6 +215,5 @@ mod tests {
         assert_eq!(bytes_written, 15);
         #[cfg(target_os = "macos")]
         assert_eq!(bytes_written, 2);
-        drop(data);
     }
 }
