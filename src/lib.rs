@@ -185,7 +185,7 @@ mod tests {
         };
 
         if error != OmError_t_ERROR_OK {
-            panic!("Error initializing encoder");
+            assert!(false, "Initialized with error");
         }
 
         let data = vec![0.0; 1000];
