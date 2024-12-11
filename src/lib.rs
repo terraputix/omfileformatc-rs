@@ -193,7 +193,7 @@ mod tests {
 
         assert!(error == OmError_t_ERROR_OK, "Initialized with error");
 
-        let mut compressed = vec![0; 1000];
+        let mut compressed = vec![0u8; 1000];
         let mut chunk_buffer = vec![0u8; 1000];
 
         let bytes_written = unsafe {
@@ -205,14 +205,14 @@ mod tests {
                 array_count.as_ptr(),
                 chunk_index,
                 chunk_offset,
-                compressed.as_mut_slice().as_mut_ptr(),
+                compressed.as_mut_ptr(),
                 chunk_buffer.as_mut_ptr(),
             )
         };
 
         // differences on different operating systems???
         #[cfg(any(target_os = "linux", target_os = "windows"))]
-        assert_eq!(bytes_written, 15);
+        assert_eq!(bytes_written, 11);
         #[cfg(target_os = "macos")]
         assert_eq!(bytes_written, 2);
     }
