@@ -5,7 +5,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 #[cfg(test)]
 mod tests {
-    use crate::om_encoder_init;
+    use crate::{om_encoder_init, OmError_t_ERROR_OK};
 
     #[test]
     fn test_round_trip_p4n() {
@@ -170,7 +170,7 @@ mod tests {
         let chunks = vec![10, 10];
         let lut_chunk_element_count = 256;
 
-        let _error = unsafe {
+        let error = unsafe {
             om_encoder_init(
                 &mut encoder,
                 1.0,
@@ -183,6 +183,10 @@ mod tests {
                 lut_chunk_element_count,
             )
         };
+
+        if error != OmError_t_ERROR_OK {
+            panic!("Error initializing encoder");
+        }
 
         let data = vec![0.0; 1000];
         let mut compressed = vec![0; 1000];
