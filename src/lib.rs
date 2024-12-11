@@ -213,10 +213,10 @@ mod tests {
             )
         };
 
-        // differences on different architectures :/
-        #[cfg(target_arch = "x86_64")]
+        // differences on different operating systems???
+        #[cfg(target_os = "linux")]
         assert_eq!(bytes_written, 15);
-        #[cfg(target_arch = "aarch64")]
+        #[cfg(target_os = "macos")]
         assert_eq!(bytes_written, 2);
         drop(data);
     }
