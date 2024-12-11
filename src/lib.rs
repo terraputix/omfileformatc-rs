@@ -214,7 +214,7 @@ mod tests {
         };
 
         // differences on different operating systems???
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "windows"))]
         assert_eq!(bytes_written, 15);
         #[cfg(target_os = "macos")]
         assert_eq!(bytes_written, 2);
