@@ -115,6 +115,67 @@ fn main() {
     println!("cargo:warning=Compiler path: {:?}", compiler.path());
     println!("cargo:warning=Compiler args: {:?}", compiler.args());
 
+    if env::var("SHOW_PREPROCESSED")
+        .map(|v| v == "TRUE")
+        .unwrap_or(false)
+    {
+        // Create a temporary build just for preprocessing
+        let preprocess_build = build.clone();
+
+        // Add preprocessing flags for cleaner output
+        let preprocess_flags = if compiler.is_like_clang() || compiler.is_like_gnu() {
+            vec![
+                "-E", // Preprocess only
+                "-P", // Don't generate line markers
+                "-C", // Keep comments
+                // "-nostdinc", // Don't include standard system directories
+                "-dD", // Keep macro definitions
+            ]
+        } else if compiler.is_like_msvc() {
+            vec!["/E", "/C"] // MSVC equivalent flags
+        } else {
+            vec!["-E"]
+        };
+
+        // Create output directory for preprocessed files
+        let preprocess_dir = PathBuf::from(format!("preprocessed/{:}", arch));
+        std::fs::create_dir_all(&preprocess_dir).unwrap();
+
+        // Process each source file
+        let src_path = format!("{}/src", SUBMODULE);
+        for entry in std::fs::read_dir(&src_path).unwrap() {
+            let path = entry.unwrap().path();
+            if path.extension().and_then(|e| e.to_str()) == Some("c") {
+                let output_file = preprocess_dir.join(
+                    path.file_name()
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                        .replace(".c", ".preprocessed.c"),
+                );
+
+                let mut cmd = preprocess_build.get_compiler().to_command();
+
+                // Add all preprocessing flags
+                for flag in &preprocess_flags {
+                    cmd.arg(flag);
+                }
+
+                cmd.arg(&path).arg("-o").arg(&output_file);
+
+                println!(
+                    "cargo:warning=Preprocessing: {:?} -> {:?}",
+                    path, output_file
+                );
+
+                let status = cmd.status().expect("Failed to preprocess");
+                if !status.success() {
+                    panic!("Preprocessing failed for {:?}", path);
+                }
+            }
+        }
+    }
+
     // Compile the library
     build.warnings(false);
     build.compile(LIB_NAME);
