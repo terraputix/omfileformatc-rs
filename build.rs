@@ -10,6 +10,7 @@ fn main() {
     const SUBMODULE: &str = "open-meteo/Sources/OmFileFormatC";
     const LIB_NAME: &str = "omfileformatc";
 
+    println!("cargo:rerun-if-changed={:}", SUBMODULE);
     // Determine the target and arch
     let target = env::var("TARGET").unwrap();
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
@@ -61,11 +62,20 @@ fn main() {
         // .flag("-Wall")
         .flag("-O3");
 
+    println!("cargo:warning=blub...");
     // --- Architecture-specific flags ---
     match arch.as_str() {
         "aarch64" => {
+            println!("cargo:warning=Using -march=armv8-a");
             // ARM64
-            build.flag("-march=armv8-a");
+            // build.flag("-march=armv8-a+simd+crypto");
+            build.flag("-march=armv8-a+simd");
+            build.flag("-mavx2");
+            build.flag("-mbmi2");
+            // build.flag("-mssse3");
+            // build.flag("-msse2");
+            // build.flag("-msse4.1");
+            // build.define("SIMDE_ENABLE_NATIVE_ALIASES", None);
 
             // if compiler.is_like_clang() {
             //     build.flag("-fomit-frame-pointer");
@@ -86,14 +96,21 @@ fn main() {
                 // Define __SSE2__ manually for MSVC
                 // build.define("__SSE2__", None);
             } else {
+                build.flag("-mavx2");
+                build.flag("-mbmi2");
+                // build.flag("-mssse3");
+                // build.flag("-msse2");
+                // build.flag("-msse4.1");
+                build.define("SIMDE_ENABLE_NATIVE_ALIASES", None);
+
                 // Choose between skylake and native based on environment variable
-                if use_skylake {
-                    build.flag("-march=skylake");
-                    println!("cargo:warning=Using -march=skylake");
-                } else {
-                    build.flag("-march=native");
-                    println!("cargo:warning=Using -march=native");
-                }
+                // if use_skylake {
+                //     build.flag("-march=skylake");
+                //     println!("cargo:warning=Using -march=skylake");
+                // } else {
+                //     build.flag("-march=native");
+                //     println!("cargo:warning=Using -march=native");
+                // }
             }
         }
         _ => {
