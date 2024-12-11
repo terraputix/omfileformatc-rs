@@ -199,7 +199,7 @@ mod tests {
         let bytes_written = unsafe {
             crate::om_encoder_compress_chunk(
                 &mut encoder,
-                data.as_slice().as_ptr() as *const std::os::raw::c_void,
+                data.as_slice().as_ptr() as *const u8,
                 dimensions.as_ptr(),
                 array_offset.as_ptr(),
                 array_count.as_ptr(),
