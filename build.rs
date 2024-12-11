@@ -106,6 +106,15 @@ fn main() {
         build.flag(&format!("--sysroot={}", sysroot_path));
     }
 
+    let compiler = build.get_compiler();
+    println!("cargo:warning=Is Clang: {}", compiler.is_like_clang());
+    println!("cargo:warning=Is Gnu: {}", compiler.is_like_gnu());
+    println!("cargo:warning=Is MSVC: {}", compiler.is_like_msvc());
+    println!("cargo:warning=Target: {}", env::var("TARGET").unwrap());
+    println!("cargo:warning=Architecture: {}", arch);
+    println!("cargo:warning=Compiler path: {:?}", compiler.path());
+    println!("cargo:warning=Compiler args: {:?}", compiler.args());
+
     // Compile the library
     build.warnings(false);
     build.compile(LIB_NAME);
