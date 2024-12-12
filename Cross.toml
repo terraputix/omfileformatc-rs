@@ -8,4 +8,10 @@ passthrough = [
     "CC=clang",
     # "CC_ENABLE_DEBUG_OUTPUT=1",
     "SYSROOT=/usr/aarch64-linux-gnu",
+    "SHOW_PREPROCESSED=TRUE",
 ]
+
+[target.x86_64-pc-windows-msvc]
+image = "ghcr.io/cross-rs/x86_64-pc-windows-msvc-cross:local"
+[target.x86_64-pc-windows-msvc.env]
+passthrough = []
