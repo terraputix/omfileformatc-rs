@@ -89,70 +89,6 @@ fn configure_build_flags(build: &mut cc::Build, config: &BuildConfig, compiler: 
     }
 }
 
-fn handle_preprocessing(build: &cc::Build, config: &BuildConfig, submodule: &str) {
-    if env::var("SHOW_PREPROCESSED")
-        .map(|v| v == "TRUE")
-        .unwrap_or(false)
-    {
-        // Create a temporary build just for preprocessing
-        let preprocess_build = build.clone();
-        let compiler = build.get_compiler();
-
-        // Add preprocessing flags for cleaner output
-        let preprocess_flags = if compiler.is_like_clang() || compiler.is_like_gnu() {
-            vec![
-                "-E", // Preprocess only
-                "-P", // Don't generate line markers
-                "-C", // Keep comments
-                // "-nostdinc", // Don't include standard system directories
-                "-dD", // Keep macro definitions
-            ]
-        } else if compiler.is_like_msvc() {
-            vec!["/E", "/C"] // MSVC equivalent flags
-        } else {
-            vec!["-E"]
-        };
-
-        // Create output directory for preprocessed files
-        let preprocess_dir = PathBuf::from(format!("preprocessed/{:}", config.arch));
-        std::fs::create_dir_all(&preprocess_dir).unwrap();
-
-        // Process each source file
-        let src_path = format!("{}/src", submodule);
-        for entry in std::fs::read_dir(&src_path).unwrap() {
-            let path = entry.unwrap().path();
-            if path.extension().and_then(|e| e.to_str()) == Some("c") {
-                let output_file = preprocess_dir.join(
-                    path.file_name()
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                        .replace(".c", ".preprocessed.c"),
-                );
-
-                let mut cmd = preprocess_build.get_compiler().to_command();
-
-                // Add all preprocessing flags
-                for flag in &preprocess_flags {
-                    cmd.arg(flag);
-                }
-
-                cmd.arg(&path).arg("-o").arg(&output_file);
-
-                println!(
-                    "cargo:warning=Preprocessing: {:?} -> {:?}",
-                    path, output_file
-                );
-
-                let status = cmd.status().expect("Failed to preprocess");
-                if !status.success() {
-                    panic!("Preprocessing failed for {:?}", path);
-                }
-            }
-        }
-    }
-}
-
 fn generate_bindings(submodule: &str, sysroot: &Option<String>) {
     let bindings = bindgen::Builder::default()
         // Set sysroot for bindgen if specified (for cross compilation)
@@ -205,10 +141,7 @@ fn main() {
         build.flag(&format!("--sysroot={}", sysroot_path));
     }
 
-    handle_preprocessing(&build, &config, SUBMODULE);
-
     // Print compiler information
-    print_preprocessor_macros(&build);
     print_compiler_info(&build);
 
     // Compile the library
@@ -219,44 +152,6 @@ fn main() {
 
     // Link the static library
     println!("cargo:rustc-link-lib=static={}", LIB_NAME);
-}
-
-fn print_preprocessor_macros(build: &cc::Build) {
-    let compiler = build.get_compiler();
-    if compiler.is_like_clang() {
-        let output = Command::new(compiler.path())
-            .args(["-dM", "-E", "-x", "c", "/dev/null", "-march=native"])
-            .output()
-            .expect("Failed to execute clang");
-
-        println!("cargo:warning=OUT status: {:}", output.stdout.len());
-
-        if let Ok(text) = String::from_utf8(output.stdout) {
-            // Filter for interesting macros
-            let simd_macros: Vec<&str> = text
-                .lines()
-                .filter(|line| {
-                    line.contains("__SSE")
-                        || line.contains("__AVX")
-                        || line.contains("__BMI")
-                        || line.contains("__FMA")
-                        || line.contains("__MMX")
-                        || line.contains("__POPCNT")
-                        || line.contains("__ADX")
-                        || line.contains("__AES")
-                        || line.contains("__SHA")
-                        || line.contains("__PCLMUL")
-                        || line.contains("__RDRND")
-                        || line.contains("__FSGSBASE")
-                        || line.contains("__F16C")
-                })
-                .collect();
-
-            for line in simd_macros.iter() {
-                println!("cargo:warning=SIMD Macros: {:}", line);
-            }
-        }
-    }
 }
 
 // Add this function to print detailed compiler configuration
