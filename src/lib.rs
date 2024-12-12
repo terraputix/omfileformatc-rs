@@ -163,6 +163,8 @@ mod tests {
         let chunk_index = 0;
         let chunk_offset = 0;
 
+        println!("create encoder");
+
         let mut encoder = crate::OmEncoder_t {
             dimension_count: 0,
             lut_chunk_element_count: 0,
@@ -176,6 +178,8 @@ mod tests {
             bytes_per_element: 0,
             bytes_per_element_compressed: 0,
         };
+
+        println!("init encoder");
 
         let error = unsafe {
             om_encoder_init(
@@ -191,10 +195,14 @@ mod tests {
             )
         };
 
+        println!("check error");
+
         assert!(error == OmError_t_ERROR_OK, "Initialized with error");
 
         let mut compressed = vec![0u8; 1000];
         let mut chunk_buffer = vec![0u8; 1000];
+
+        println!("compress chunk");
 
         let bytes_written = unsafe {
             crate::om_encoder_compress_chunk(
@@ -210,10 +218,13 @@ mod tests {
             )
         };
 
+        println!("check bytes written");
+
         // differences on different operating systems???
         #[cfg(any(target_os = "linux", target_os = "windows"))]
         assert_eq!(bytes_written, 11);
         #[cfg(target_os = "macos")]
         assert_eq!(bytes_written, 2);
+        println!("Basically finished test...")
     }
 }
