@@ -90,6 +90,10 @@ mod tests {
         let mut buffer: Vec<i16> = vec![1, 2, 3, 4, 5, 7, 9, 11, 13, 15];
         unsafe { crate::delta2d_encode(2, 5, buffer.as_mut_ptr()) };
         assert_eq!(buffer, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+        let mut buffer: Vec<u8> = vec![2, 0, 3, 0, 7, 0, 8, 0];
+        unsafe { crate::delta2d_encode(2, 2, buffer.as_mut_ptr() as *mut i16) }
+        assert_eq!(&buffer, &[2, 0, 3, 0, 5, 0, 5, 0])
     }
 
     #[test]
@@ -134,8 +138,8 @@ mod tests {
     fn test_delta2d_xor_roundtrip() {
         let mut buffer: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
         unsafe {
-            crate::delta2d_decode_xor(2, 5, buffer.as_mut_ptr());
             crate::delta2d_encode_xor(2, 5, buffer.as_mut_ptr());
+            crate::delta2d_decode_xor(2, 5, buffer.as_mut_ptr());
         }
         let expected: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
         assert_eq!(buffer, expected);
@@ -145,8 +149,8 @@ mod tests {
     fn test_delta2d_roundtrip() {
         let mut buffer: Vec<i16> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         unsafe {
-            crate::delta2d_decode(2, 5, buffer.as_mut_ptr());
             crate::delta2d_encode(2, 5, buffer.as_mut_ptr());
+            crate::delta2d_decode(2, 5, buffer.as_mut_ptr());
         }
         let expected: Vec<i16> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         assert_eq!(buffer, expected);
@@ -199,8 +203,7 @@ mod tests {
         #[cfg(target_arch = "x86_64")]
         {
             assert_eq!(&direct_compressed[0..4], &[2, 3, 114, 1]);
-            // somehow this is sometimes
-            // [2, 3, 114, 141]
+            // somehow this is in CI of omfiles-rs: [2, 3, 114, 141] ???
         }
         #[cfg(target_arch = "aarch64")]
         {
