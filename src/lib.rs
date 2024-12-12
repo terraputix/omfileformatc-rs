@@ -92,7 +92,7 @@ mod tests {
         assert_eq!(buffer, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
         let mut buffer: Vec<u8> = vec![2, 0, 3, 0, 7, 0, 8, 0];
-        unsafe { crate::delta2d_encode(2, 2, buffer.as_mut_ptr() as *mut i16) }
+        unsafe { crate::delta2d_encode(4, 2, buffer.as_mut_ptr() as *mut i16) }
         assert_eq!(&buffer, &[2, 0, 3, 0, 5, 0, 5, 0])
     }
 
