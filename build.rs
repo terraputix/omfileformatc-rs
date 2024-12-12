@@ -86,6 +86,10 @@ fn main() {
                 // Define __SSE2__ manually for MSVC
                 // build.define("__SSE2__", None);
             } else {
+                // build.flag("-march=x86-64-v3");
+                // build.flag("-mtune=generic");
+                // println!("cargo:warning=Modifying march flags");
+
                 // Choose between skylake and native based on environment variable
                 if use_skylake {
                     build.flag("-march=skylake");
@@ -105,15 +109,6 @@ fn main() {
     if let Some(sysroot_path) = &sysroot {
         build.flag(&format!("--sysroot={}", sysroot_path));
     }
-
-    let compiler = build.get_compiler();
-    println!("cargo:warning=Is Clang: {}", compiler.is_like_clang());
-    println!("cargo:warning=Is Gnu: {}", compiler.is_like_gnu());
-    println!("cargo:warning=Is MSVC: {}", compiler.is_like_msvc());
-    println!("cargo:warning=Target: {}", env::var("TARGET").unwrap());
-    println!("cargo:warning=Architecture: {}", arch);
-    println!("cargo:warning=Compiler path: {:?}", compiler.path());
-    println!("cargo:warning=Compiler args: {:?}", compiler.args());
 
     if env::var("SHOW_PREPROCESSED")
         .map(|v| v == "TRUE")
@@ -176,6 +171,10 @@ fn main() {
         }
     }
 
+    // Print compiler information
+    print_preprocessor_macros(&build);
+    print_compiler_info(&build);
+
     // Compile the library
     build.warnings(false);
     build.compile(LIB_NAME);
@@ -197,4 +196,73 @@ fn main() {
 
     // Link the static library
     println!("cargo:rustc-link-lib=static={}", LIB_NAME);
+}
+
+fn print_preprocessor_macros(build: &cc::Build) {
+    let compiler = build.get_compiler();
+    if compiler.is_like_clang() {
+        let output = Command::new(compiler.path())
+            .args(["-dM", "-E", "-x", "c", "/dev/null", "-march=native"])
+            .output()
+            .expect("Failed to execute clang");
+
+        println!("cargo:warning=OUT status: {:}", output.stdout.len());
+
+        if let Ok(text) = String::from_utf8(output.stdout) {
+            // Filter for interesting macros
+            let simd_macros: Vec<&str> = text
+                .lines()
+                .filter(|line| {
+                    line.contains("__SSE")
+                        || line.contains("__AVX")
+                        || line.contains("__BMI")
+                        || line.contains("__FMA")
+                        || line.contains("__MMX")
+                        || line.contains("__POPCNT")
+                        || line.contains("__ADX")
+                        || line.contains("__AES")
+                        || line.contains("__SHA")
+                        || line.contains("__PCLMUL")
+                        || line.contains("__RDRND")
+                        || line.contains("__FSGSBASE")
+                        || line.contains("__F16C")
+                })
+                .collect();
+
+            for line in simd_macros.iter() {
+                println!("cargo:warning=SIMD Macros: {:}", line);
+            }
+            // println!("cargo:warning=SIMD Macros:\n{}", simd_macros.join("\n"));
+        }
+    }
+}
+
+// Add this function to print detailed compiler configuration
+fn print_compiler_info(build: &cc::Build) {
+    let compiler = build.get_compiler();
+
+    println!("cargo:warning=Compiler Configuration:");
+    println!("cargo:warning=Path: {:?}", compiler.path());
+    println!("cargo:warning=Is Clang: {}", compiler.is_like_clang());
+    println!("cargo:warning=Is Gnu: {}", compiler.is_like_gnu());
+    println!("cargo:warning=Is MSVC: {}", compiler.is_like_msvc());
+    println!("cargo:warning=Arguments: {:?}", compiler.args());
+
+    // Print environment variables that might affect compilation
+    let relevant_vars = [
+        "CC",
+        "CFLAGS",
+        "CXXFLAGS",
+        "RUSTFLAGS",
+        "TARGET",
+        "HOST",
+        "CARGO_CFG_TARGET_ARCH",
+    ];
+
+    println!("cargo:warning=Relevant Environment Variables:");
+    for var in relevant_vars {
+        if let Ok(value) = env::var(var) {
+            println!("cargo:warning={}={}", var, value);
+        }
+    }
 }
