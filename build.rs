@@ -232,7 +232,6 @@ fn print_preprocessor_macros(build: &cc::Build) {
             for line in simd_macros.iter() {
                 println!("cargo:warning=SIMD Macros: {:}", line);
             }
-            // println!("cargo:warning=SIMD Macros:\n{}", simd_macros.join("\n"));
         }
     }
 }
