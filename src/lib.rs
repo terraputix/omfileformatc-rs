@@ -154,7 +154,7 @@ mod tests {
 
     #[test]
     fn test_p4nzenc128v16_cpuarch_dependency() {
-        let u8_nums = vec![02_u8, 0, 3, 0, 5, 0, 5, 0];
+        let u8_nums = vec![02_u8, 0, 3, 0, 6, 0, 3, 0];
         let u16_len = u8_nums.len() / 2;
 
         let mut u16_nums = unsafe {
@@ -197,10 +197,15 @@ mod tests {
         assert_eq!(direct_result, 4);
         assert_eq!(&direct_compressed[0..4], &callback_compressed[0..4]);
         #[cfg(target_arch = "x86_64")]
-        assert_eq!(&direct_compressed[0..4], &[2, 3, 34, 0]);
+        {
+            assert_eq!(&direct_compressed[0..4], &[2, 3, 114, 1]);
+            // somehow this is sometimes
+            // [2, 3, 114, 141]
+        }
         #[cfg(target_arch = "aarch64")]
-        assert_eq!(&direct_compressed[0..4], &[2, 3, 34, 0]);
-        // assert_eq!(&direct_compressed[0..4], &[2, 3, 34, 16]); // WHY??
+        {
+            assert_eq!(&direct_compressed[0..4], &[2, 3, 114, 1]);
+        }
     }
 
     #[test]
