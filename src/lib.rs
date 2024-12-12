@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_p4nzenc128v16_cpuarch_dependency() {
-        let u8_nums = vec![02_u8, 0, 3, 0, 6, 0, 3, 0];
+        let u8_nums = vec![02_u8, 0, 3, 0, 6, 0, 3, 0, 6, 0, 6, 0, 3, 0, 3, 0];
         let u16_len = u8_nums.len() / 2;
 
         let mut u16_nums = unsafe {
@@ -178,11 +178,7 @@ mod tests {
 
         // Test both direct function and function pointer callbacks
         let direct_result = unsafe {
-            crate::p4nzenc128v16(
-                u16_nums.as_mut_ptr(),
-                u16_len,
-                direct_compressed.as_mut_ptr(),
-            )
+            crate::p4nzenc128v16(u16_nums.as_mut_ptr(), 4, direct_compressed.as_mut_ptr())
         };
 
         let callback_result = unsafe {
@@ -192,7 +188,7 @@ mod tests {
 
             callback.unwrap()(
                 u16_nums.as_ptr() as *const c_void,
-                u16_len as u64,
+                4,
                 callback_compressed.as_mut_ptr() as *mut c_void,
             )
         };
