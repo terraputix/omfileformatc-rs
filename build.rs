@@ -2,32 +2,27 @@ use std::env;
 use std::path::PathBuf;
 use std::process::Command;
 
-fn main() {
-    // Re-run build script if these files change
-    println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=src/lib.rs");
+struct BuildConfig {
+    // target: String,
+    arch: String,
+    sysroot: Option<String>,
+    use_skylake: bool,
+    is_windows: bool,
+}
 
-    const SUBMODULE: &str = "open-meteo/Sources/OmFileFormatC";
-    const LIB_NAME: &str = "omfileformatc";
+fn get_build_config() -> BuildConfig {
+    BuildConfig {
+        // target: env::var("TARGET").unwrap(),
+        arch: env::var("CARGO_CFG_TARGET_ARCH").unwrap(),
+        sysroot: env::var("SYSROOT").ok(),
+        use_skylake: env::var("MARCH_SKYLAKE")
+            .map(|v| v == "TRUE")
+            .unwrap_or(false),
+        is_windows: env::var("TARGET").unwrap().contains("windows"),
+    }
+}
 
-    // Determine the target and arch
-    let target = env::var("TARGET").unwrap();
-    let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
-
-    // Get sysroot from environment if it is set
-    // This might be required for cross-compilation
-    // compare: https://github.com/rust-lang/rust-bindgen/issues/1229
-    let sysroot = env::var("SYSROOT").ok();
-
-    let is_windows = target.contains("windows");
-
-    // Check for MARCH_SKYLAKE environment variable
-    let use_skylake = env::var("MARCH_SKYLAKE")
-        .map(|v| v == "TRUE")
-        .unwrap_or(false);
-
-    let mut build = cc::Build::new();
-
+fn setup_compiler(build: &mut cc::Build) -> cc::Tool {
     // We try to use clang if it is available
     let clang_available = Command::new("clang")
         .arg("--version")
@@ -42,27 +37,15 @@ fn main() {
     // respect CC env variable if set
     let _ = env::var("CC").map(|cc| build.compiler(cc));
 
-    let compiler = build.get_compiler();
-    println!("cargo:compiler={:?}", compiler.path());
+    build.get_compiler()
+}
 
-    // Include directories
-    build.include(format!("{}/include", SUBMODULE));
-    // Add all .c files from the submodule's src directory
-    let src_path = format!("{}/src", SUBMODULE);
-    for entry in std::fs::read_dir(&src_path).unwrap() {
-        let path = entry.unwrap().path();
-        if path.extension().and_then(|e| e.to_str()) == Some("c") {
-            build.file(path);
-        }
-    }
-
+fn configure_build_flags(build: &mut cc::Build, config: &BuildConfig, compiler: &cc::Tool) {
     // Basic compiler flags
-    build
-        // .flag("-Wall")
-        .flag("-O3");
+    build.flag("-O3");
 
     // --- Architecture-specific flags ---
-    match arch.as_str() {
+    match config.arch.as_str() {
         "aarch64" => {
             // ARM64
             build.flag("-march=armv8-a");
@@ -75,7 +58,7 @@ fn main() {
         }
         "x86_64" => {
             // x86_64 Architecture
-            if is_windows && compiler.is_like_msvc() {
+            if config.is_windows && compiler.is_like_msvc() {
                 // MSVC-specific flags for SSE and AVX
                 // Note: MSVC does not support /arch:SSE4.1 directly
                 // Using /arch:AVX instead, which includes SSE4.1
@@ -91,7 +74,7 @@ fn main() {
                 // println!("cargo:warning=Modifying march flags");
 
                 // Choose between skylake and native based on environment variable
-                if use_skylake {
+                if config.use_skylake {
                     build.flag("-march=skylake");
                     println!("cargo:warning=Using -march=skylake");
                 } else {
@@ -104,18 +87,16 @@ fn main() {
             // Handle other architectures if necessary
         }
     }
+}
 
-    // Set sysroot if specified
-    if let Some(sysroot_path) = &sysroot {
-        build.flag(&format!("--sysroot={}", sysroot_path));
-    }
-
+fn handle_preprocessing(build: &cc::Build, config: &BuildConfig, submodule: &str) {
     if env::var("SHOW_PREPROCESSED")
         .map(|v| v == "TRUE")
         .unwrap_or(false)
     {
         // Create a temporary build just for preprocessing
         let preprocess_build = build.clone();
+        let compiler = build.get_compiler();
 
         // Add preprocessing flags for cleaner output
         let preprocess_flags = if compiler.is_like_clang() || compiler.is_like_gnu() {
@@ -133,11 +114,11 @@ fn main() {
         };
 
         // Create output directory for preprocessed files
-        let preprocess_dir = PathBuf::from(format!("preprocessed/{:}", arch));
+        let preprocess_dir = PathBuf::from(format!("preprocessed/{:}", config.arch));
         std::fs::create_dir_all(&preprocess_dir).unwrap();
 
         // Process each source file
-        let src_path = format!("{}/src", SUBMODULE);
+        let src_path = format!("{}/src", submodule);
         for entry in std::fs::read_dir(&src_path).unwrap() {
             let path = entry.unwrap().path();
             if path.extension().and_then(|e| e.to_str()) == Some("c") {
@@ -170,6 +151,61 @@ fn main() {
             }
         }
     }
+}
+
+fn generate_bindings(submodule: &str, sysroot: &Option<String>) {
+    let bindings = bindgen::Builder::default()
+        // Set sysroot for bindgen if specified (for cross compilation)
+        .clang_arg(
+            sysroot
+                .as_ref()
+                .map_or("".to_string(), |s| format!("--sysroot={}", s)),
+        )
+        .clang_arg(format!("-I{}/include", submodule))
+        .header(format!("{}/include/om_file_format.h", submodule))
+        .generate()
+        .expect("Unable to generate bindings");
+
+    // Write the bindings to the $OUT_DIR/bindings.rs file
+    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    bindings
+        .write_to_file(out_path.join("bindings.rs"))
+        .expect("Couldn't write bindings!");
+}
+
+fn main() {
+    // Re-run build script if these files change
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=src/lib.rs");
+
+    const SUBMODULE: &str = "open-meteo/Sources/OmFileFormatC";
+    const LIB_NAME: &str = "omfileformatc";
+
+    let config = get_build_config();
+    let mut build = cc::Build::new();
+    let compiler = setup_compiler(&mut build);
+
+    println!("cargo:compiler={:?}", compiler.path());
+
+    // Include directories
+    build.include(format!("{}/include", SUBMODULE));
+    // Add all .c files from the submodule's src directory
+    let src_path = format!("{}/src", SUBMODULE);
+    for entry in std::fs::read_dir(&src_path).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().and_then(|e| e.to_str()) == Some("c") {
+            build.file(path);
+        }
+    }
+
+    configure_build_flags(&mut build, &config, &compiler);
+
+    // Set sysroot if specified
+    if let Some(sysroot_path) = &config.sysroot {
+        build.flag(&format!("--sysroot={}", sysroot_path));
+    }
+
+    handle_preprocessing(&build, &config, SUBMODULE);
 
     // Print compiler information
     print_preprocessor_macros(&build);
@@ -179,20 +215,7 @@ fn main() {
     build.warnings(false);
     build.compile(LIB_NAME);
 
-    // Generate bindings using bindgen
-    let bindings = bindgen::Builder::default()
-        // Set sysroot for bindgen if specified (for cross compilation)
-        .clang_arg(sysroot.map_or("".to_string(), |s| format!("--sysroot={}", s)))
-        .clang_arg(format!("-I{}/include", SUBMODULE))
-        .header(format!("{}/include/om_file_format.h", SUBMODULE))
-        .generate()
-        .expect("Unable to generate bindings");
-
-    // Write the bindings to the $OUT_DIR/bindings.rs file
-    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-    bindings
-        .write_to_file(out_path.join("bindings.rs"))
-        .expect("Couldn't write bindings!");
+    generate_bindings(SUBMODULE, &config.sysroot);
 
     // Link the static library
     println!("cargo:rustc-link-lib=static={}", LIB_NAME);
