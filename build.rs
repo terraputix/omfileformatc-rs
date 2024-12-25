@@ -114,7 +114,7 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=src/lib.rs");
 
-    const SUBMODULE: &str = "om-file-format/c/";
+    const SUBMODULE: &str = "om-file-format/c";
     const LIB_NAME: &str = "omfileformatc";
 
     let config = get_build_config();
