@@ -23,19 +23,22 @@ fn get_build_config() -> BuildConfig {
 }
 
 fn setup_compiler(build: &mut cc::Build) -> cc::Tool {
-    // We try to use clang if it is available
-    let clang_available = Command::new("clang")
-        .arg("--version")
-        .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false);
+    // Check if CC is set in environment
+    if let Ok(cc) = env::var("CC") {
+        build.compiler(cc);
+    } else {
+        // Try using clang if available
+        let clang_available = Command::new("clang")
+            .arg("--version")
+            .output()
+            .map(|output| output.status.success())
+            .unwrap_or(false);
 
-    if clang_available {
-        build.compiler("clang");
+        if clang_available {
+            build.compiler("clang");
+        }
+        // Otherwise cc::Build will use system default
     }
-
-    // respect CC env variable if set
-    let _ = env::var("CC").map(|cc| build.compiler(cc));
 
     build.get_compiler()
 }
@@ -49,37 +52,17 @@ fn configure_build_flags(build: &mut cc::Build, config: &BuildConfig, compiler: 
         "aarch64" => {
             // ARM64
             build.flag("-march=armv8-a");
-
-            // if compiler.is_like_clang() {
-            //     build.flag("-fomit-frame-pointer");
-            //     // Uncomment the following line if you need to set the macro limit for Clang
-            //     // build.flag("-fmacro-backtrace-limit=0");
-            // }
         }
         "x86_64" => {
             // x86_64 Architecture
             if config.is_windows && compiler.is_like_msvc() {
-                // MSVC-specific flags for SSE and AVX
-                // Note: MSVC does not support /arch:SSE4.1 directly
-                // Using /arch:AVX instead, which includes SSE4.1
-                // build.flag("/arch:AVX");
-                // build.flag("/arch:AVX2");
-                // build.flag("/arch:SSE2");
-
-                // Define __SSE2__ manually for MSVC
-                // build.define("__SSE2__", None);
+                // No special flags needed for MSVC atm
             } else {
-                // build.flag("-march=x86-64-v3");
-                // build.flag("-mtune=generic");
-                // println!("cargo:warning=Modifying march flags");
-
                 // Choose between skylake and native based on environment variable
                 if config.use_skylake {
                     build.flag("-march=skylake");
-                    println!("cargo:warning=Using -march=skylake");
                 } else {
                     build.flag("-march=native");
-                    println!("cargo:warning=Using -march=native");
                 }
             }
         }
@@ -110,12 +93,13 @@ fn generate_bindings(submodule: &str, sysroot: &Option<String>) {
 }
 
 fn main() {
+    const SUBMODULE: &str = "om-file-format/c";
+    const LIB_NAME: &str = "omfileformatc";
+
     // Re-run build script if these files change
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=src/lib.rs");
-
-    const SUBMODULE: &str = "om-file-format/c";
-    const LIB_NAME: &str = "omfileformatc";
+    println!("cargo:rerun-if-changed={:}", SUBMODULE);
 
     let config = get_build_config();
     let mut build = cc::Build::new();
@@ -142,7 +126,7 @@ fn main() {
     }
 
     // Print compiler information
-    print_compiler_info(&build);
+    // print_compiler_info(&build);
 
     // Compile the library
     build.warnings(false);
@@ -155,6 +139,7 @@ fn main() {
 }
 
 // Add this function to print detailed compiler configuration
+#[allow(dead_code)]
 fn print_compiler_info(build: &cc::Build) {
     let compiler = build.get_compiler();
 
@@ -180,6 +165,14 @@ fn print_compiler_info(build: &cc::Build) {
     for var in relevant_vars {
         if let Ok(value) = env::var(var) {
             println!("cargo:warning={}={}", var, value);
+        }
+    }
+
+    // Print all configured flags
+    println!("cargo:warning=Configured Build Flags:");
+    for arg in compiler.args() {
+        if let Some(flag) = arg.to_str() {
+            println!("cargo:warning=Flag: {}", flag);
         }
     }
 }
