@@ -1,12 +1,13 @@
 # Rust Bindings for Open-Meteo OmFileFormatC library
 
-This project provides bindings to the [OmFileFormatC](https://github.com/open-meteo/open-meteo/tree/dbc027b9257e6802444541dec0ed5b27a6bc7a0e/Sources/OmFileFormatC)  library.
+This project provides bindings to the [OmFileFormat](https://github.com/open-meteo/om-file-format) library.
 
 ## Development
 
 Build and Test:
 
 ```bash
+git submodule update --init
 cargo build
 cargo test
 ```

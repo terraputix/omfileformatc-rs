@@ -1,4 +1,4 @@
-[submodule "open-meteo"]
-	path = open-meteo
-	url = https://github.com/open-meteo/open-meteo.git
-	branch = testing_multi_dimensional_files
+[submodule "om-file-format"]
+	path = om-file-format
+	url = https://github.com/open-meteo/om-file-format
+	branch = main

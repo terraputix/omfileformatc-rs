@@ -47,3 +47,4 @@ jobs:
         with:
           command: "test"
           target: ${{ matrix.platform.target }}
+          args: "-- --test-threads=1 --nocapture"
