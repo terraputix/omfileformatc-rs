@@ -7,7 +7,7 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=src/lib.rs");
 
-    const SUBMODULE: &str = "open-meteo/Sources/OmFileFormatC";
+    const SUBMODULE: &str = "om-file-format";
     const LIB_NAME: &str = "omfileformatc";
 
     // Determine the target and arch
@@ -39,6 +39,7 @@ fn main() {
 
     let compiler = build.get_compiler();
     println!("cargo:compiler={:?}", compiler.path());
+    println!("cargo:warning=compiler={:?}", compiler.path());
 
     // if cfg!(target_family = "wasm") {
     // if let Some(libc) = std::env::var_os("DEP_WASM32_UNKNOWN_UNKNOWN_OPENBSD_LIBC_INCLUDE") {
@@ -48,9 +49,9 @@ fn main() {
     // }
 
     // Include directories
-    build.include(format!("{}/include", SUBMODULE));
+    build.include(format!("{}/c/include", SUBMODULE));
     // Add all .c files from the submodule's src directory
-    let src_path = format!("{}/src", SUBMODULE);
+    let src_path = format!("{}/c/src", SUBMODULE);
     for entry in std::fs::read_dir(&src_path).unwrap() {
         let path = entry.unwrap().path();
         if path.extension().and_then(|e| e.to_str()) == Some("c") {
@@ -103,12 +104,13 @@ fn main() {
         "wasm32" => {
             println!("cargo:warning=WebAssembly target detected");
             build.flag("-msimd128");
-            build.flag("-mavx");
-            build.flag("--no-entry");
-            build.flag("-s");
-            build.flag("SIDE_MODULE=1");
-            build.flag("-s");
-            build.flag("RELOCATABLE=1");
+            build.flag("-mssse3");
+            // build.flag("--no-entry");
+
+            // build.flag("-s");
+            // build.flag("SIDE_MODULE=1");
+            // build.flag("-s");
+            // build.flag("RELOCATABLE=1");
         }
         _ => {
             // Handle other architectures if necessary
@@ -130,11 +132,11 @@ fn main() {
     let bindings = bindgen::Builder::default()
         // Set sysroot for bindgen if specified (for cross compilation)
         // .clang_arg(sysroot.map_or("".to_string(), |s| format!("--sysroot={}", s)))
-        .clang_arg(format!("-I{}/include", SUBMODULE))
-        .header(format!("{}/include/vp4.h", SUBMODULE))
-        .header(format!("{}/include/fp.h", SUBMODULE))
-        .header(format!("{}/include/om_decoder.h", SUBMODULE))
-        .header(format!("{}/include/delta2d.h", SUBMODULE))
+        .clang_arg(format!("-I{}/c/include", SUBMODULE))
+        .header(format!("{}/c/include/vp4.h", SUBMODULE))
+        .header(format!("{}/c/include/fp.h", SUBMODULE))
+        .header(format!("{}/c/include/om_decoder.h", SUBMODULE))
+        .header(format!("{}/c/include/delta2d.h", SUBMODULE))
         .generate()
         .expect("Unable to generate bindings");
 
@@ -148,8 +150,8 @@ fn main() {
 
     println!("cargo:warning=Bindings written to bindings.rs");
 
-    // Link the static library
-    // Link the object files and static library into a single WebAssembly binary
+    // // Link the static library
+    // // Link the object files and static library into a single WebAssembly binary
     // if target.contains("wasm32") {
     //     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     //     let mut object_files = Vec::new();
@@ -166,6 +168,9 @@ fn main() {
     //     command
     //         .arg("--no-entry")
     //         .arg("--export-all")
+    //         .arg("--allow-undefined")
+    //         .arg("--export=delta2d_encode_xor")
+    //         .arg("--export=delta2d_decode_xor")
     //         .arg("-o")
     //         .arg(output_wasm)
     //         .args(&object_files);
@@ -177,6 +182,19 @@ fn main() {
     // } else {
     //     println!("cargo:rustc-link-lib=static={}", LIB_NAME);
     // }
+    //
+    // Add linker flags for emscripten
+    if target.contains("emscripten") {
+        println!("cargo:rustc-link-arg=-s");
+        println!("cargo:rustc-link-arg=SIDE_MODULE=1");
+        println!("cargo:rustc-link-arg=-s");
+        println!("cargo:rustc-link-arg=EXPORT_ALL=1");
+        println!("cargo:rustc-link-arg=-s");
+        println!("cargo:rustc-link-arg=LINKABLE=1");
+        println!("cargo:rustc-link-arg=-s");
+        println!("cargo:rustc-link-arg=MODULARIZE=1");
+        // Add more flags as needed
+    }
 
-    // println!("cargo:rustc-link-lib=static={}", LIB_NAME);
+    println!("cargo:rustc-link-lib=static={}", LIB_NAME);
 }

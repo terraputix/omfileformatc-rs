@@ -1,4 +1,3 @@
-[submodule "open-meteo"]
-	path = open-meteo
-	url = https://github.com/terraputix/open-meteo.git
-	branch = windows-fixes
+[submodule "om-file-format"]
+	path = om-file-format
+	url = https://github.com/open-meteo/om-file-format
